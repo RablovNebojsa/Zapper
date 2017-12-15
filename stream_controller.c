@@ -22,23 +22,50 @@ static Config configData;
 
 static struct timespec lockStatusWaitTime;
 static struct timeval now;
+
+static timer_t channelTimer;
+
 static pthread_t scThread;
 static pthread_cond_t demuxCond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t demuxMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void* streamControllerTask();
 static void startChannel(int32_t channelNumber);
+static void initTimer();
+static void channelChange(union sigval signalArg);
 
+StreamControllerError numKeyPressed(uint16_t setProgramNumber){
+	struct itimerspec timerSpec;
+	struct itimerspec timerSpecOld;
+	int32_t timerFlags = 0;
+	
+	memset(&timerSpec,0,sizeof(timerSpec));
+	timer_settime(channelTimer,timerFlags,&timerSpec,&timerSpecOld);
+printf("\n*** Timer stop!\n");
+	programNumber = setProgramNumber;
+	
+	memset(&timerSpec,0,sizeof(timerSpec));
+	/* specify the timer timeout time */
+	timerSpec.it_value.tv_sec = 3;
+	timerSpec.it_value.tv_nsec = 0;
+
+	if(timer_settime(channelTimer,timerFlags,&timerSpec,&timerSpecOld) == -1){
+		printf("\nError setting timer!\n");
+		return SC_ERROR;
+	}
+	return SC_NO_ERROR;
+}
 
 StreamControllerError streamControllerInit(const char* fileName)
 {
-    if (pthread_create(&scThread, NULL, &streamControllerTask, (void*)fileName))
-    {
-        printf("Error creating input event task!\n");
-        return SC_THREAD_ERROR;
-    }
+	initTimer();
+	if (pthread_create(&scThread, NULL, &streamControllerTask, (void*)fileName))
+	{
+	printf("Error creating input event task!\n");
+	return SC_THREAD_ERROR;
+	}
 
-    return SC_NO_ERROR;
+	return SC_NO_ERROR;
 }
 
 StreamControllerError streamControllerDeinit()
@@ -118,6 +145,11 @@ StreamControllerError channelDown()
     return SC_NO_ERROR;
 }
 
+void channelChange(union sigval signalArg){
+printf("\n*** Timer signal\n");
+	changeChannel = true;
+}
+
 StreamControllerError getChannelInfo(ChannelInfo* channelInfo)
 {
     if (channelInfo == NULL)
@@ -131,6 +163,21 @@ StreamControllerError getChannelInfo(ChannelInfo* channelInfo)
     channelInfo->videoPid = currentChannel.videoPid;
     
     return SC_NO_ERROR;
+}
+
+/* Initialize linux timer to count time 
+ * between two key presses
+ */
+void initTimer(){
+	struct sigevent signalEvent;
+	int ret;
+	signalEvent.sigev_notify = SIGEV_THREAD;
+	signalEvent.sigev_notify_function = channelChange;
+	signalEvent.sigev_value.sival_ptr = NULL;
+	signalEvent.sigev_notify_attributes = NULL;
+	ret = timer_create(/*clock for time measuring*/CLOCK_REALTIME,
+                       /*timer settings*/&signalEvent,
+                       /*where to store the ID of the newly created timer*/&channelTimer);
 }
 
 /* Sets filter to receive current channel PMT table

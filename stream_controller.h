@@ -11,6 +11,8 @@
 #include <errno.h>
 #include <stdbool.h>
 #include "config_parser.h"
+#include <linux/input.h>
+#include <signal.h>
 
 #define DESIRED_FREQUENCY 754000000	        /* Tune frequency in Hz */
 #define BANDWIDTH 8    				        /* Bandwidth in Mhz */
@@ -72,6 +74,14 @@ StreamControllerError channelUp();
  * @return stream controller error
  */
 StreamControllerError channelDown();
+
+/**
+ * @brief 
+ *
+ * @param [in]  programNumber - 
+ * @return stream controller error code
+ */
+StreamControllerError numKeyPressed(uint16_t setProgramNumber);
 
 /**
  * @brief Returns current channel info

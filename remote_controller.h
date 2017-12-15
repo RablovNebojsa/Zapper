@@ -20,6 +20,23 @@
 #define EV_VALUE_KEYPRESS   1
 #define EV_VALUE_AUTOREPEAT 2
 
+
+/**
+ * @brief Structure that defines remote controller numeric keycodes
+ */
+typedef enum _RemoteControllerNumKey{
+	KEYCODE_1 = 2,
+	KEYCODE_2 = 3,
+	KEYCODE_3 = 4,
+	KEYCODE_4 = 5,
+	KEYCODE_5 = 6,
+	KEYCODE_6 = 7,
+	KEYCODE_7 = 8,
+	KEYCODE_8 = 9,
+	KEYCODE_9 = 10,
+	KEYCODE_0 = 11
+}RemoteControllerNumKey;
+
 /**
  * @brief Structure that defines remote controller error
  */

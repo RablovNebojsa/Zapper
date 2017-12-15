@@ -96,13 +96,13 @@ void* inputEventTask()
 			printf("Event value: %d\n",eventBuf.value);
 			printf("\n");
             
-            /* trigger remote controller callback */
-		if(callback != NULL)
-callback(eventBuf.code, eventBuf.type, eventBuf.value);
-			
-		else
-           	printf("Callback is not init\n");
-
+		    /* trigger remote controller callback */
+			if(callback != NULL){
+				callback(eventBuf.code, eventBuf.type, eventBuf.value);
+			}	
+			else{
+		   		printf("Callback is not init\n");
+			}
 		}
     }
 	return (void*)RC_NO_ERROR;
