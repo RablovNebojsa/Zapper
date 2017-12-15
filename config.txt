@@ -1,0 +1,4 @@
+freq=754000000
+bandwidth=8
+modul=DVB_T
+programNumber=1
