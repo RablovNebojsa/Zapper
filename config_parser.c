@@ -4,7 +4,9 @@ static ConfigError checkConfigParametar(char* param, Config* configStruct);
 
 ConfigError parseConfigFile(char* fileName, Config* configStruct){
     FILE* fp;
-	char buf[bufSize];
+    size_t bufferSize = 128;
+	char* buffer;
+	int characters = 0;
 
 	if ((fp = fopen(fileName, "r")) == NULL)
 	{ /* Open source file. */
@@ -12,11 +14,18 @@ ConfigError parseConfigFile(char* fileName, Config* configStruct){
 		return CONFIG_ERROR;
 	}
 
-	while (fgets(buf, sizeof(buf), fp) != NULL)
+    buffer = (char*)malloc(bufferSize * sizeof(char));
+    if( buffer == NULL)
+    {
+        perror("Unable to allocate buffer");
+        exit(1);
+    }
+	while ((characters = getline(&buffer, &bufferSize, fp)) != -1)
 	{
-	    if(strcmp(buf,"\n")){
-            buf[strlen(buf) - 1] = '\0';
-            if(checkConfigParametar(buf, configStruct)){
+	    printf("%d\n", characters);
+	    if(strcmp(buffer,"\n")){
+            buffer[characters - 1] = '\0';
+            if(checkConfigParametar(buffer, configStruct)){
                 printf("Extracting parametar error!\n");
                 return CONFIG_ERROR;
             }
@@ -26,12 +35,11 @@ ConfigError parseConfigFile(char* fileName, Config* configStruct){
 	return CONFIG_OK;
 }
 
-// Trebalo bi ispitati za svaki parametar da li je ispravno zadat( (granice frekvencija, bandwidth,
-// moduli koji su podrzani i slicno
+// Trebalo bi ispitati za svaki parametar da li je ispravno zadat (granice frekvencija, bandwidth,
+// moduli koji su podrzani i slicno)
 static ConfigError checkConfigParametar(char* param, Config* configStruct){
     char* token;
 	token = strtok(param,"=");
-printf("\n%s",token);
 	if(token == NULL){
 		printf("Line parsing error!\n");
 		return CONFIG_ERROR;

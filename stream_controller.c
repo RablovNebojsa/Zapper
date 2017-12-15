@@ -32,7 +32,6 @@ static void startChannel(int32_t channelNumber);
 
 StreamControllerError streamControllerInit(const char* fileName)
 {
-printf("\nLOG3\n");
     if (pthread_create(&scThread, NULL, &streamControllerTask, (void*)fileName))
     {
         printf("Error creating input event task!\n");
@@ -220,13 +219,11 @@ void startChannel(int32_t channelNumber)
 
 void* streamControllerTask(void* fileName)
 {
-//printf("\nLOG4 %s\n", fileName);
 	if(parseConfigFile((char*)fileName, &configData) == CONFIG_ERROR){
 		printf("\nError in config file!\n");
 		return (void*) SC_ERROR;	
 	}
-	printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwidth);
-//printf("\nLOG5 %s\n");
+printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwidth);
     gettimeofday(&now,NULL);
     lockStatusWaitTime.tv_sec = now.tv_sec+10;
 
@@ -264,8 +261,9 @@ void* streamControllerTask(void* fileName)
 	}
     
     /* lock to frequency */
-    if(!Tuner_Lock_To_Frequency(DESIRED_FREQUENCY, BANDWIDTH, DVB_T))
+    if(!Tuner_Lock_To_Frequency(configData.freq, configData.bandwidth, configData.modul))
     {
+		programNumber = configData.programNumber;
         printf("\n%s: INFO Tuner_Lock_To_Frequency(): %d Hz - success!\n",__FUNCTION__,DESIRED_FREQUENCY);
     }
     else
@@ -302,10 +300,10 @@ void* streamControllerTask(void* fileName)
     /* open source */
     if(Player_Source_Open(playerHandle, &sourceHandle))
     {
-	printf("\n%s : ERROR Player_Source_Open() fail\n", __FUNCTION__);
-	free(patTable);
+		printf("\n%s : ERROR Player_Source_Open() fail\n", __FUNCTION__);
+		free(patTable);
         free(pmtTable);
-	Player_Deinit(playerHandle);
+		Player_Deinit(playerHandle);
         Tuner_Deinit();
         return (void*) SC_ERROR;	
 	}
