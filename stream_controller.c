@@ -16,6 +16,8 @@ static uint32_t filterHandle = 0;
 static uint8_t threadExit = 0;
 static bool changeChannel = false;
 static int16_t programNumber = 0;
+static int16_t programNumberBuffer = 0;
+static int16_t counter = 1;
 static ChannelInfo currentChannel;
 static bool isInitialized = false;
 static Config configData;
@@ -24,6 +26,7 @@ static struct timespec lockStatusWaitTime;
 static struct timeval now;
 
 static timer_t channelTimer;
+
 
 static pthread_t scThread;
 static pthread_cond_t demuxCond = PTHREAD_COND_INITIALIZER;
@@ -34,7 +37,7 @@ static void startChannel(int32_t channelNumber);
 static void initTimer();
 static void channelChange(union sigval signalArg);
 
-StreamControllerError numKeyPressed(uint16_t setProgramNumber){
+StreamControllerError numKeyPressed(uint16_t keyPressed){
 	struct itimerspec timerSpec;
 	struct itimerspec timerSpecOld;
 	int32_t timerFlags = 0;
@@ -42,8 +45,25 @@ StreamControllerError numKeyPressed(uint16_t setProgramNumber){
 	memset(&timerSpec,0,sizeof(timerSpec));
 	timer_settime(channelTimer,timerFlags,&timerSpec,&timerSpecOld);
 printf("\n*** Timer stop!\n");
-	programNumber = setProgramNumber;
 	
+	if(counter == 3){
+printf("\n*** Tri puta kliknuo %d\n", counter);
+		programNumberBuffer = (programNumberBuffer * 10) + keyPressed;
+printf("\n*** Prebaci na kanal: %d\n", programNumberBuffer);
+		changeChannel = true;
+		counter = 1;
+		return SC_NO_ERROR;
+	}else if(counter == 2) {
+printf("\n*** Dva puta kliknuo %d\n", counter);
+		programNumberBuffer = (programNumberBuffer * 10) + keyPressed;
+printf("\n*** Prebaci na kanal: %d\n", programNumberBuffer);
+		counter = 3;
+	}else{
+printf("\n*** Jednom kliknuo %d\n", counter);
+		programNumberBuffer = keyPressed;
+printf("\n*** Prebaci na kanal: %d\n", programNumberBuffer);
+		counter = 2;
+	}
 	memset(&timerSpec,0,sizeof(timerSpec));
 	/* specify the timer timeout time */
 	timerSpec.it_value.tv_sec = 3;
@@ -54,6 +74,7 @@ printf("\n*** Timer stop!\n");
 		return SC_ERROR;
 	}
 	return SC_NO_ERROR;
+	
 }
 
 StreamControllerError streamControllerInit(const char* fileName)
@@ -147,6 +168,8 @@ StreamControllerError channelDown()
 
 void channelChange(union sigval signalArg){
 printf("\n*** Timer signal\n");
+	counter = 1;
+	programNumber = programNumberBuffer - 1;
 	changeChannel = true;
 }
 
@@ -311,11 +334,11 @@ printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwid
     if(!Tuner_Lock_To_Frequency(configData.freq, configData.bandwidth, configData.modul))
     {
 		programNumber = configData.programNumber;
-        printf("\n%s: INFO Tuner_Lock_To_Frequency(): %d Hz - success!\n",__FUNCTION__,DESIRED_FREQUENCY);
+        printf("\n%s: INFO Tuner_Lock_To_Frequency(): %d Hz - success!\n",__FUNCTION__,configData.freq);
     }
     else
     {
-        printf("\n%s: ERROR Tuner_Lock_To_Frequency(): %d Hz - fail!\n",__FUNCTION__,DESIRED_FREQUENCY);
+        printf("\n%s: ERROR Tuner_Lock_To_Frequency(): %d Hz - fail!\n",__FUNCTION__,configData.freq);
         free(patTable);
         free(pmtTable);
         Tuner_Deinit();
@@ -400,11 +423,11 @@ int32_t sectionReceivedCallback(uint8_t *buffer)
     uint8_t tableId = *buffer;  
     if(tableId==0x00)
     {
-        //printf("\n%s -----PAT TABLE ARRIVED-----\n",__FUNCTION__);
+       //printf("\n%s -----PAT TABLE ARRIVED-----\n",__FUNCTION__);
         
         if(parsePatTable(buffer,patTable)==TABLES_PARSE_OK)
         {
-            //printPatTable(patTable);
+           // printPatTable(patTable);
         	pthread_mutex_lock(&demuxMutex);
 		pthread_cond_signal(&demuxCond);
 		pthread_mutex_unlock(&demuxMutex);
@@ -417,7 +440,7 @@ int32_t sectionReceivedCallback(uint8_t *buffer)
         
         if(parsePmtTable(buffer,pmtTable)==TABLES_PARSE_OK)
         {
-            //printPmtTable(pmtTable);
+           // printPmtTable(pmtTable);
 		pthread_mutex_lock(&demuxMutex);
 		pthread_cond_signal(&demuxCond);
 		pthread_mutex_unlock(&demuxMutex);

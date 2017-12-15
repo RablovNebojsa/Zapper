@@ -66,39 +66,39 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 	{
 		case KEYCODE_1:
 			printf("\nKey 1 pressed\n");
-			numKeyPressed(0);
+			numKeyPressed(1);
 			break;
 		case KEYCODE_2:
 			printf("\nKey 2 pressed\n");
-			numKeyPressed(1);
+			numKeyPressed(2);
 			break;
 		case KEYCODE_3:
 			printf("\nKey 3 pressed\n");
-			numKeyPressed(2);
+			numKeyPressed(3);
 			break;
 		case KEYCODE_4:
 			printf("\nKey 4 pressed\n");
-			numKeyPressed(3);
+			numKeyPressed(4);
 			break;
 		case KEYCODE_5:
 			printf("\nKey 5 pressed\n");
-			numKeyPressed(4);
+			numKeyPressed(5);
 			break;
 		case KEYCODE_6:
 			printf("\nKey 6 pressed\n");
-			numKeyPressed(5);
+			numKeyPressed(6);
 			break;
 		case KEYCODE_7:
 			printf("\nKey 7 pressed\n");
-			numKeyPressed(6);
+			numKeyPressed(7);
 			break;
 		case KEYCODE_8:
 			printf("\nKey 8 pressed\n");
-			numKeyPressed(7);
+			numKeyPressed(8);
 			break;
 		case KEYCODE_9:
 			printf("\nKey 9 pressed\n");
-			numKeyPressed(8);
+			numKeyPressed(9);
 			break;
 		case KEYCODE_0:
 			printf("\nKey 0 pressed\n");

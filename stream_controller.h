@@ -14,9 +14,6 @@
 #include <linux/input.h>
 #include <signal.h>
 
-#define DESIRED_FREQUENCY 754000000	        /* Tune frequency in Hz */
-#define BANDWIDTH 8    				        /* Bandwidth in Mhz */
-
 /**
  * @brief Structure that defines stream controller error
  */
@@ -36,16 +33,6 @@ typedef struct _ChannelInfo
     int16_t audioPid;
     int16_t videoPid;
 }ChannelInfo;
-
-/**
- * @brief Structure that holds configuration data
- *
-typedef struct _Config {
-	uint32_t freq;
-	uint32_t bandwidth;
-	t_Module modul;
-	uint32_t programNumber;
-} Config; */
 
 /**
  * @brief Initializes stream controller module
@@ -76,12 +63,12 @@ StreamControllerError channelUp();
 StreamControllerError channelDown();
 
 /**
- * @brief 
+ * @brief Registers numeric key press
  *
- * @param [in]  programNumber - 
+ * @param [in]  setProgramNumber - 
  * @return stream controller error code
  */
-StreamControllerError numKeyPressed(uint16_t setProgramNumber);
+StreamControllerError numKeyPressed(uint16_t keyPressed);
 
 /**
  * @brief Returns current channel info
