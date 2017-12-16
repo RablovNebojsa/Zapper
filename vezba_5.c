@@ -22,12 +22,17 @@ if (x != 0)                                                                 \
  }                                                                          \
 }
 
-
+static int32_t programNumberBuffer;
+static int16_t counter = 1;
+static timer_t keyPressTimer;
+	
 static void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value);
 static pthread_cond_t deinitCond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t deinitMutex = PTHREAD_MUTEX_INITIALIZER;
 static ChannelInfo channelInfo;
 
+static int32_t initTimer();
+static int32_t numKeyPressed(uint16_t keyPressed);
 
 int main(int argc, char *argv[])
 {
@@ -48,6 +53,8 @@ int main(int argc, char *argv[])
 	}
 	pthread_mutex_unlock(&deinitMutex);
     
+	ERRORCHECK(initTimer());
+	
     /* unregister remote controller callback */
     ERRORCHECK(unregisterRemoteControllerCallback(remoteControllerCallback));
 
@@ -66,43 +73,43 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 	{
 		case KEYCODE_1:
 			printf("\nKey 1 pressed\n");
-			numKeyPressed(1);
+			ERRORCHECK(numKeyPressed(1));
 			break;
 		case KEYCODE_2:
 			printf("\nKey 2 pressed\n");
-			numKeyPressed(2);
+			ERRORCHECK(numKeyPressed(2));
 			break;
 		case KEYCODE_3:
 			printf("\nKey 3 pressed\n");
-			numKeyPressed(3);
+			ERRORCHECK(numKeyPressed(3));
 			break;
 		case KEYCODE_4:
 			printf("\nKey 4 pressed\n");
-			numKeyPressed(4);
+			ERRORCHECK(numKeyPressed(4));
 			break;
 		case KEYCODE_5:
 			printf("\nKey 5 pressed\n");
-			numKeyPressed(5);
+			ERRORCHECK(numKeyPressed(5));
 			break;
 		case KEYCODE_6:
 			printf("\nKey 6 pressed\n");
-			numKeyPressed(6);
+			ERRORCHECK(numKeyPressed(6));
 			break;
 		case KEYCODE_7:
 			printf("\nKey 7 pressed\n");
-			numKeyPressed(7);
+			ERRORCHECK(numKeyPressed(7));
 			break;
 		case KEYCODE_8:
 			printf("\nKey 8 pressed\n");
-			numKeyPressed(8);
+			ERRORCHECK(numKeyPressed(8));
 			break;
 		case KEYCODE_9:
 			printf("\nKey 9 pressed\n");
-			numKeyPressed(9);
+			ERRORCHECK(numKeyPressed(9));
 			break;
 		case KEYCODE_0:
 			printf("\nKey 0 pressed\n");
-			numKeyPressed(0);
+			ERRORCHECK(numKeyPressed(0));
 			break;
 		case KEYCODE_INFO:
 		    printf("\nInfo pressed\n");          
@@ -134,3 +141,61 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 	}
 }
 
+int32_t numKeyPressed(uint16_t keyPressed)
+{
+	struct itimerspec timerSpec;
+	struct itimerspec timerSpecOld;
+	int32_t timerFlags = 0;
+	
+	memset(&timerSpec,0,sizeof(timerSpec));
+	timer_settime(channelTimer,timerFlags,&timerSpec,&timerSpecOld);
+	
+	if(counter == 3){
+		programNumberBuffer = (programNumberBuffer * 10) + keyPressed;
+		ERRORCHECK(channelChange(programNumberBuffer));
+		counter = 1;
+		return 0;
+	}else if(counter == 2) {
+		programNumberBuffer = (programNumberBuffer * 10) + keyPressed;
+		counter = 3;
+	}else{
+		programNumberBuffer = keyPressed;
+		counter = 2;
+	}
+	
+	memset(&timerSpec,0,sizeof(timerSpec));
+	/* specify the timer timeout time */
+	timerSpec.it_value.tv_sec = 3;
+	timerSpec.it_value.tv_nsec = 0;
+
+	if(timer_settime(keyPressTimer,timerFlags,&timerSpec,&timerSpecOld) == -1){
+		printf("\nError setting timer!\n");
+		return 1;
+	}
+	return 0;
+}
+
+/* Initialize linux timer to count time 
+ * between two key presses
+ */
+int32_t initTimer(){
+	struct sigevent signalEvent;
+	int ret;
+	signalEvent.sigev_notify = SIGEV_THREAD;
+	signalEvent.sigev_notify_function = timeOut;
+	signalEvent.sigev_value.sival_ptr = NULL;
+	signalEvent.sigev_notify_attributes = NULL;
+	ret = timer_create(/*clock for time measuring*/CLOCK_REALTIME,
+                       /*timer settings*/&signalEvent,
+                       /*where to store the ID of the newly created timer*/&keyPressTimer);
+	if(ret == 0){
+		printf("\nTimer can not be created.\n");
+		return 1;
+	}
+	return 0;
+}
+
+void timeOut(union sigval signalArg){
+	counter = 1;
+	ERRORCHECK(channelChange(programNumberBuffer));
+}

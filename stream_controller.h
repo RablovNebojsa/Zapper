@@ -65,10 +65,10 @@ StreamControllerError channelDown();
 /**
  * @brief Registers numeric key press
  *
- * @param [in]  setProgramNumber - 
+ * @param [in]  program - program number to change to
  * @return stream controller error code
  */
-StreamControllerError numKeyPressed(uint16_t keyPressed);
+StreamControllerError channelChange(uint32_t program);
 
 /**
  * @brief Returns current channel info
