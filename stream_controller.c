@@ -36,11 +36,10 @@ static void channelChange(union sigval signalArg);
 
 StreamControllerError streamControllerInit(const char* fileName)
 {
-	initTimer();
 	if (pthread_create(&scThread, NULL, &streamControllerTask, (void*)fileName))
 	{
-	printf("Error creating input event task!\n");
-	return SC_THREAD_ERROR;
+		printf("Error creating input event task!\n");
+		return SC_THREAD_ERROR;
 	}
 
 	return SC_NO_ERROR;

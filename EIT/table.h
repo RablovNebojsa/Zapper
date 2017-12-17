@@ -3,6 +3,9 @@
 
 #define TABLES_MAX_NUMBER_OF_EVENTS_IN_EIT  20
 
+/**
+ * @brief Structure that defines EIT Table Header
+ */
 typedef struct _EitHeader{
     uint8_t     tableId;
     uint8_t     sectionSyntaxIndicator;
@@ -18,6 +21,9 @@ typedef struct _EitHeader{
     uint8_t     lastTabeId;
 }EitHeader;
 
+/**
+ * @brief Structure that defines EIT event info
+ */
 typedef struct _EitEventInfo{
     uint16_t    eventId;
     uint64_t    startTime;
@@ -27,9 +33,13 @@ typedef struct _EitEventInfo{
     uint16_t    descriptorsLoopLength;
 }EitEventInfo;
 
+/**
+ * @brief Structure that defines EIT table
+ */
 typedef struct  _EitTable{
     EitHeader       eitHeader;
     EitEventInfo    eitEventInfoArray[TABLES_MAX_NUMBER_OF_EVENTS_IN_EIT];
+	uint8_t 		eventInfoCount;
 }EitTable;
 
 #endif // TABLE_H_INCLUDED
