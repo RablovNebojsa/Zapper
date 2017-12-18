@@ -4,16 +4,18 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define TABLES_MAX_NUMBER_OF_PIDS_IN_PAT    20 	    /* Max number of PMT pids in one PAT table */
-#define TABLES_MAX_NUMBER_OF_ELEMENTARY_PID 20       /* Max number of elementary pids in one PMT table */
+#define TABLES_MAX_NUMBER_OF_ELEMENTARY_PID 20      /* Max number of elementary pids in one PMT table */
+#define TABLES_MAX_NUMBER_OF_EVENTS_IN_EIT  20		/* Max number of event info in EIT table */
 
 /**
  * @brief Enumeration of possible tables parser error codes
  */
 typedef enum _ParseErrorCode
 {
-    TABLES_PARSE_ERROR = 0,                         /* TABLES_PARSE_ERROR */
+	TABLES_PARSE_ERROR = 0,                         /* TABLES_PARSE_ERROR */
 	TABLES_PARSE_OK = 1                             /* TABLES_PARSE_OK */
 }ParseErrorCode;
 
@@ -87,6 +89,46 @@ typedef struct _PmtTable
     PmtElementaryInfo pmtElementaryInfoArray[TABLES_MAX_NUMBER_OF_ELEMENTARY_PID];
     uint8_t elementaryInfoCount;
 }PmtTable;
+
+/**
+ * @brief Structure that defines EIT Table Header
+ */
+typedef struct _EitHeader{
+    uint8_t     tableId;
+    uint8_t     sectionSyntaxIndicator;
+    uint16_t    sectionLength;
+    uint16_t    serviceId;
+    uint8_t     versionNumber;
+    uint8_t     currentNextIndicator;
+    uint8_t     sectionNumber;
+    uint8_t     lastSectionNumber;
+    uint16_t    transportStreamId;
+    uint16_t    originalNetworkId;
+    uint8_t     segmentLastSectionNumber;
+    uint8_t     lastTabeId;
+}EitHeader;
+
+/**
+ * @brief Structure that defines EIT event info
+ */
+typedef struct _EitEventInfo{
+    uint16_t    eventId;
+    uint64_t    startTime;
+    uint32_t    duration;
+    uint8_t     runningStatus;
+    uint8_t     freeCaMode;
+    uint16_t    descriptorsLoopLength;
+	char 	eventTitle[35];
+}EitEventInfo;
+
+/**
+ * @brief Structure that defines EIT table
+ */
+typedef struct  _EitTable{
+    EitHeader       eitHeader;
+    EitEventInfo    eitEventInfoArray[TABLES_MAX_NUMBER_OF_EVENTS_IN_EIT];
+	uint8_t 		eventInfoCount;
+}EitTable;
 
 /**
  * @brief  Parse PAT header.
