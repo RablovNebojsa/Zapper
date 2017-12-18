@@ -30,13 +30,12 @@ static pthread_mutex_t demuxMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void* streamControllerTask();
 static void startChannel(int32_t channelNumber);
-static void initTimer();
-static void channelChange(union sigval signalArg);
 
-
-StreamControllerError streamControllerInit(const char* fileName)
+StreamControllerError streamControllerInit(const Config initData)
 {
-	if (pthread_create(&scThread, NULL, &streamControllerTask, (void*)fileName))
+	configData = initData;
+
+	if (pthread_create(&scThread, NULL, &streamControllerTask, NULL))
 	{
 		printf("Error creating input event task!\n");
 		return SC_THREAD_ERROR;
@@ -123,6 +122,10 @@ StreamControllerError channelDown()
 }
 
 StreamControllerError channelChange(uint32_t program){
+	if((program - 1) > 4){
+		printf("\n Channel %d unavailable!\n", program);
+		return SC_ERROR;
+	}
 	programNumber = program - 1;
 	
 	changeChannel = true;
@@ -231,12 +234,8 @@ void startChannel(int32_t channelNumber)
     currentChannel.videoPid = videoPid;
 }
 
-void* streamControllerTask(void* fileName)
+void* streamControllerTask()
 {
-	if(parseConfigFile((char*)fileName, &configData) == CONFIG_ERROR){
-		printf("\nError in config file!\n");
-		return (void*) SC_ERROR;	
-	}
 printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwidth);
     gettimeofday(&now,NULL);
     lockStatusWaitTime.tv_sec = now.tv_sec+10;
