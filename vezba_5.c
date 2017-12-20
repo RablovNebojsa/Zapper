@@ -42,33 +42,35 @@ int main(int argc, char *argv[])
 	ERRORCHECK(parseConfigFile((char*)argv[1], &configData));	
 
 	ERRORCHECK(initTimer());
-    /* initialize remote controller module */
-    ERRORCHECK(remoteControllerInit(configData));
-    
-    /* register remote controller callback */
-    ERRORCHECK(registerRemoteControllerCallback(remoteControllerCallback));
-    
-    /* initialize stream controller module */
-    ERRORCHECK(streamControllerInit(configData));
+	/* initialize remote controller module */
+	ERRORCHECK(remoteControllerInit(configData));
 
-    /* wait for a EXIT remote controller key press event */
-    pthread_mutex_lock(&deinitMutex);
+	/* register remote controller callback */
+	ERRORCHECK(registerRemoteControllerCallback(remoteControllerCallback));
+
+	/* initialize stream controller module */
+	ERRORCHECK(streamControllerInit(configData));
+
+	/* wait for a EXIT remote controller key press event */
+	pthread_mutex_lock(&deinitMutex);
 	if (ETIMEDOUT == pthread_cond_wait(&deinitCond, &deinitMutex))
 	{
 		printf("\n%s : ERROR Lock timeout exceeded!\n", __FUNCTION__);
 	}
 	pthread_mutex_unlock(&deinitMutex);
-    
-    /* unregister remote controller callback */
-    ERRORCHECK(unregisterRemoteControllerCallback(remoteControllerCallback));
 
-    /* deinitialize remote controller module */
-    ERRORCHECK(remoteControllerDeinit());
+	/* unregister remote controller callback */
+	ERRORCHECK(unregisterRemoteControllerCallback(remoteControllerCallback));
 
-    /* deinitialize stream controller module */
-    ERRORCHECK(streamControllerDeinit());
-  
-    return 0;
+	/* deinitialize remote controller module */
+	ERRORCHECK(remoteControllerDeinit());
+
+	/* deinitialize stream controller module */
+	ERRORCHECK(streamControllerDeinit());
+
+	timer_delete(keyPressTimer);
+	  
+	return 0;
 }
 
 void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)

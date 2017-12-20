@@ -108,17 +108,25 @@ typedef struct _EitHeader{
     uint8_t     lastTabeId;
 }EitHeader;
 
+typedef struct _Short_Event_Descriptor{
+	uint8_t		descriptorTag;
+	uint8_t		descriptorLength;
+	uint32_t	Iso639LanguageCode;
+	uint8_t		eventNameLength;
+	char		eventName[256];
+}Short_Event_Descriptor;
+
 /**
  * @brief Structure that defines EIT event info
  */
 typedef struct _EitEventInfo{
-    uint16_t    eventId;
-    uint64_t    startTime;
-    uint32_t    duration;
-    uint8_t     runningStatus;
-    uint8_t     freeCaMode;
-    uint16_t    descriptorsLoopLength;
-	char 	eventTitle[35];
+	uint16_t 	eventId;
+	uint8_t 	startTime[5];
+	uint8_t		duration[3];
+	uint8_t		runningStatus;
+	uint8_t		freeCaMode;
+	uint16_t	descriptorsLoopLength;
+	Short_Event_Descriptor	shortEventDescriptor;
 }EitEventInfo;
 
 /**
@@ -127,7 +135,7 @@ typedef struct _EitEventInfo{
 typedef struct  _EitTable{
     EitHeader       eitHeader;
     EitEventInfo    eitEventInfoArray[TABLES_MAX_NUMBER_OF_EVENTS_IN_EIT];
-	uint8_t 		eventInfoCount;
+	uint8_t 	eventInfoCount;
 }EitTable;
 
 /**
@@ -199,6 +207,15 @@ ParseErrorCode parsePmtTable(const uint8_t* pmtSectionBuffer, PmtTable* pmtTable
  * @return tables error code
  */
 ParseErrorCode printPmtTable(PmtTable* pmtTable);
+
+
+ParseErrorCode parseEitHeader(const uint8_t* eitHeaderBuffer, EitHeader* eitHeader);
+
+ParseErrorCode parseEitEventInfo(const uint8_t* eitEventInfoBuffer, EitEventInfo* eitEventInfo);
+
+ParseErrorCode parseShortEventDescriptor(const uint8_t* shortEventDescriptorBuffer, EitEventInfo* eitEventInfo);
+
+ParseErrorCode parseEitTable(const uint8_t* eitSectionBuffer, EitTable* eitTable);
 
 #endif /* __TABLES_H__ */
 

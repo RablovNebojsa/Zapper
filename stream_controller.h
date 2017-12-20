@@ -18,9 +18,9 @@
  */
 typedef enum _StreamControllerError
 {
-    SC_NO_ERROR = 0,
-    SC_ERROR,
-    SC_THREAD_ERROR
+	SC_NO_ERROR = 0,
+	SC_ERROR,
+	SC_THREAD_ERROR
 }StreamControllerError;
 
 /**
@@ -28,9 +28,9 @@ typedef enum _StreamControllerError
  */
 typedef struct _ChannelInfo
 {
-    int16_t programNumber;
-    int16_t audioPid;
-    int16_t videoPid;
+	int16_t programNumber;
+	int16_t audioPid;
+	int16_t videoPid;
 }ChannelInfo;
 
 /**

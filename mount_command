@@ -4,4 +4,4 @@ cd /mnt/PPUTVIOS_Student1
 
 source setenv_pputvios.sh
 smb://samba03
-
+cp vezba_5 /home/student/pputvios1/ploca
