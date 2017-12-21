@@ -28,19 +28,22 @@ typedef enum _StreamControllerError
  */
 typedef struct _ChannelInfo
 {
-	int16_t programNumber;
-	int16_t audioPid;
-	int16_t videoPid;
+	int16_t 	programNumber;
+	int16_t		audioPid;
+	int16_t 	videoPid;
+	uint8_t		eventNameLength;
+	char		eventName[256];
+	uint8_t 	startTime[5];
 }ChannelInfo;
 
 /**
 /* @brief Structure that holds starting parameters
 */
 typedef struct _config {
-	uint32_t freq;
-	uint32_t bandwidth;
-	uint32_t modul;
-	uint32_t programNumber;
+	uint32_t 	freq;
+	uint32_t 	bandwidth;
+	uint32_t 	modul;
+	uint32_t 	programNumber;
 } Config;
 
 /**

@@ -146,7 +146,7 @@ StreamControllerError getChannelInfo(ChannelInfo* channelInfo)
     channelInfo->programNumber = currentChannel.programNumber;
     channelInfo->audioPid = currentChannel.audioPid;
     channelInfo->videoPid = currentChannel.videoPid;
-    
+	
     return SC_NO_ERROR;
 }
 
@@ -157,8 +157,7 @@ StreamControllerError getChannelInfo(ChannelInfo* channelInfo)
  * Creates streams with current channel audio and video pids
  */
 void startChannel(int32_t channelNumber)
-{
-    
+{  
     /* free PAT table filter */
     Demux_Free_Filter(playerHandle, filterHandle);
     
@@ -169,7 +168,6 @@ void startChannel(int32_t channelNumber)
         return;
 	}
 
-    
     /* wait for a PMT table to be parsed*/
     pthread_mutex_lock(&demuxMutex);
 	if (ETIMEDOUT == pthread_cond_wait(&demuxCond, &demuxMutex))
@@ -268,7 +266,7 @@ printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwid
     patTable=(PatTable*)malloc(sizeof(PatTable));
     if(patTable==NULL)
     {
-	printf("\n%s : ERROR Cannot allocate memory\n", __FUNCTION__);
+		printf("\n%s : ERROR Cannot allocate memory\n", __FUNCTION__);
         return (void*) SC_ERROR;
 	}  
     memset(patTable, 0x0, sizeof(PatTable));
@@ -277,7 +275,7 @@ printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwid
     pmtTable=(PmtTable*)malloc(sizeof(PmtTable));
     if(pmtTable==NULL)
     {
-	printf("\n%s : ERROR Cannot allocate memory\n", __FUNCTION__);
+		printf("\n%s : ERROR Cannot allocate memory\n", __FUNCTION__);
         return (void*) SC_ERROR;
 	}  
     memset(pmtTable, 0x0, sizeof(PmtTable));
@@ -286,7 +284,7 @@ printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwid
     eitTable=(EitTable*)malloc(sizeof(EitTable));
     if(eitTable==NULL)
     {
-	printf("\n%s : ERROR Cannot allocate memory\n", __FUNCTION__);
+		printf("\n%s : ERROR Cannot allocate memory\n", __FUNCTION__);
         return (void*) SC_ERROR;
 	}  
     memset(eitTable, 0x0, sizeof(EitTable));
@@ -309,7 +307,7 @@ printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwid
     /* lock to frequency */
     if(!Tuner_Lock_To_Frequency(configData.freq, configData.bandwidth, configData.modul))
     {
-	programNumber = configData.programNumber;
+		programNumber = configData.programNumber;
         printf("\n%s: INFO Tuner_Lock_To_Frequency(): %d Hz - success!\n",__FUNCTION__,configData.freq);
     }
     else
@@ -336,8 +334,8 @@ printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwid
     /* initialize player */
     if(Player_Init(&playerHandle))
     {
-	printf("\n%s : ERROR Player_Init() fail\n", __FUNCTION__);
-	free(patTable);
+		printf("\n%s : ERROR Player_Init() fail\n", __FUNCTION__);
+		free(patTable);
         free(pmtTable);
         Tuner_Deinit();
         return (void*) SC_ERROR;
@@ -370,11 +368,11 @@ printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwid
 	if (ETIMEDOUT == pthread_cond_wait(&demuxCond, &demuxMutex))
 	{
 		printf("\n%s:ERROR Lock timeout exceeded!\n", __FUNCTION__);
-        	free(patTable);
-        	free(pmtTable);
+		free(patTable);
+		free(pmtTable);
 		Player_Deinit(playerHandle);
-        	Tuner_Deinit();
-        	return (void*) SC_ERROR;
+		Tuner_Deinit();
+		return (void*) SC_ERROR;
 	}
 	pthread_mutex_unlock(&demuxMutex);
     
@@ -404,9 +402,9 @@ int32_t sectionReceivedCallback(uint8_t *buffer)
         if(parsePatTable(buffer,patTable) == TABLES_PARSE_OK)
         {
            // printPatTable(patTable);
-        	pthread_mutex_lock(&demuxMutex);
-		pthread_cond_signal(&demuxCond);
-		pthread_mutex_unlock(&demuxMutex);
+			pthread_mutex_lock(&demuxMutex);
+			pthread_cond_signal(&demuxCond);
+			pthread_mutex_unlock(&demuxMutex);
             
         }
     } 
@@ -417,15 +415,18 @@ int32_t sectionReceivedCallback(uint8_t *buffer)
         if(parsePmtTable(buffer,pmtTable) == TABLES_PARSE_OK)
         {
            // printPmtTable(pmtTable);
-		pthread_mutex_lock(&demuxMutex);
-		pthread_cond_signal(&demuxCond);
-		pthread_mutex_unlock(&demuxMutex);
+			pthread_mutex_lock(&demuxMutex);
+			pthread_cond_signal(&demuxCond);
+			pthread_mutex_unlock(&demuxMutex);
         }
     }
 	else if(tableId == 0x4E)
 	{
 		printf("\n%s -----EIT TABLE ARRIVED-----\n",__FUNCTION__);
 		if(parseEitTable(buffer,eitTable) == TABLES_PARSE_OK){
+			if(addEitToList() != 0){
+				printf("\nCannot add event info!\n");
+			}
 			printEitTable(eitTable);
 			pthread_mutex_lock(&demuxMutex);
 			pthread_cond_signal(&demuxCond);
@@ -433,6 +434,10 @@ int32_t sectionReceivedCallback(uint8_t *buffer)
 		}
 	}
     return 0;
+}
+
+int32_t addEitToList(){
+	
 }
 
 int32_t tunerStatusCallback(t_LockStatus status)

@@ -108,6 +108,9 @@ typedef struct _EitHeader{
     uint8_t     lastTabeId;
 }EitHeader;
 
+/**
+ * @brief Structure that defines EIT Short Event Descriptor
+ */
 typedef struct _Short_Event_Descriptor{
 	uint8_t		descriptorTag;
 	uint8_t		descriptorLength;
@@ -135,7 +138,7 @@ typedef struct _EitEventInfo{
 typedef struct  _EitTable{
     EitHeader       eitHeader;
     EitEventInfo    eitEventInfoArray[TABLES_MAX_NUMBER_OF_EVENTS_IN_EIT];
-	uint8_t 	eventInfoCount;
+	uint8_t 		eventInfoCount;
 }EitTable;
 
 /**
@@ -174,7 +177,7 @@ ParseErrorCode parsePatTable(const uint8_t* patSectionBuffer, PatTable* patTable
 ParseErrorCode printPatTable(PatTable* patTable);
 
 /**
- * @brief Parse pmt table
+ * @brief Parse PMT header
  *
  * @param [in]  pmtHeaderBuffer Buffer that contains PMT header
  * @param [out] pmtHeader PMT table header
@@ -208,14 +211,49 @@ ParseErrorCode parsePmtTable(const uint8_t* pmtSectionBuffer, PmtTable* pmtTable
  */
 ParseErrorCode printPmtTable(PmtTable* pmtTable);
 
-
+/**
+ * @brief Parse EIT header
+ *
+ * @param [in]  eitHeaderBuffer - Buffer that contains EIT header
+ * @param [out] eitHeader - EIT table header
+ * @return tables error code
+ */
 ParseErrorCode parseEitHeader(const uint8_t* eitHeaderBuffer, EitHeader* eitHeader);
 
+/**
+ * @brief Parse EIT event info
+ *
+ * @param [in]  eitEventInfoBuffer - Buffer that contains eit event info
+ * @param [out] eitEventInfo - EIT event info
+ * @return tables error code
+ */
 ParseErrorCode parseEitEventInfo(const uint8_t* eitEventInfoBuffer, EitEventInfo* eitEventInfo);
 
+/**
+ * @brief Parse EIT short event descriptor
+ *
+ * @param [in]  shortEventDescriptorBuffer - Buffer that contains eit short event descriptor
+ * @param [out] eitEventInfo - EIT event info
+ * @return tables error code
+ */
 ParseErrorCode parseShortEventDescriptor(const uint8_t* shortEventDescriptorBuffer, EitEventInfo* eitEventInfo);
 
+/**
+ * @brief Parse EIT table
+ *
+ * @param [in]  eitSectionBuffer - Buffer that contains EIT table section
+ * @param [out] eitTable - EIT table
+ * @return tables error code
+ */
 ParseErrorCode parseEitTable(const uint8_t* eitSectionBuffer, EitTable* eitTable);
+
+/**
+ * @brief Print EIT table
+ *
+ * @param [in] eitTable - EIT table to print
+ * @return tables error code
+ */
+ParseErrorCode printEitTable(EitTable* eitTable);
 
 #endif /* __TABLES_H__ */
 

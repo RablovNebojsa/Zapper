@@ -138,9 +138,9 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 			break;
 		case KEYCODE_EXIT:
 			printf("\nExit pressed\n");
-            		pthread_mutex_lock(&deinitMutex);
-		    	pthread_cond_signal(&deinitCond);
-		    	pthread_mutex_unlock(&deinitMutex);
+			pthread_mutex_lock(&deinitMutex);
+			pthread_cond_signal(&deinitCond);
+			pthread_mutex_unlock(&deinitMutex);
 			break;
 		default:
 			printf("\nPress P+, P-, info or exit! \n\n");
