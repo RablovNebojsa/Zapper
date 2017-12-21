@@ -141,6 +141,12 @@ typedef struct  _EitTable{
 	uint8_t 		eventInfoCount;
 }EitTable;
 
+
+typedef struct _CurrentEventsInfo{
+    uint16_t    serviceId;
+	uint8_t 	startTime[5];
+	char		eventName[256];
+}CurrentEventsInfo;
 /**
  * @brief  Parse PAT header.
  * 

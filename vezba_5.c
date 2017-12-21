@@ -123,8 +123,11 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 		    {
 		        printf("\n********************* Channel info *********************\n");
 		        printf("Program number: %d\n", channelInfo.programNumber);
-		        printf("Audio pid: %d\n", channelInfo.audioPid);
-		        printf("Video pid: %d\n", channelInfo.videoPid);
+		        //printf("Audio pid: %d\n", channelInfo.audioPid);
+		        //printf("Video pid: %d\n", channelInfo.videoPid);
+				printf("Service ID: %d\n", channelInfo.serviceId);
+				printf("Event Name: %s\n", channelInfo.eventName);
+				printf("Start time: %x:%x:%x\n", channelInfo.startTime[2], channelInfo.startTime[3], channelInfo.startTime[4]);
 		        printf("**********************************************************\n");
 		    }
 			break;

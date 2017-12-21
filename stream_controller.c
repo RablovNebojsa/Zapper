@@ -137,16 +137,22 @@ StreamControllerError channelChange(uint32_t program){
 
 StreamControllerError getChannelInfo(ChannelInfo* channelInfo)
 {
+	int i;
     if (channelInfo == NULL)
     {
         printf("\n Error wrong parameter\n", __FUNCTION__);
         return SC_ERROR;
     }
     
+	channelInfo->serviceId = currentChannel.serviceId;
     channelInfo->programNumber = currentChannel.programNumber;
     channelInfo->audioPid = currentChannel.audioPid;
     channelInfo->videoPid = currentChannel.videoPid;
-	
+	strcpy(channelInfo->eventName, currentChannel.eventName);
+	for(i = 0; i < 5; i++){
+		channelInfo->startTime[i] = currentChannel.startTime[i];
+	}
+
     return SC_NO_ERROR;
 }
 
@@ -193,7 +199,7 @@ void startChannel(int32_t channelNumber)
 	if (ETIMEDOUT == pthread_cond_wait(&demuxCond, &demuxMutex))
 	{
 		printf("\n%s : ERROR Lock timeout exceeded!\n", __FUNCTION__);
-        	streamControllerDeinit();
+        streamControllerDeinit();
 	}
 	pthread_mutex_unlock(&demuxMutex);
     
@@ -250,6 +256,7 @@ void startChannel(int32_t channelNumber)
     }
     
     /* store current channel info */
+	currentChannel.serviceId = pmtTable->pmtHeader.programNumber;
     currentChannel.programNumber = channelNumber + 1;
     currentChannel.audioPid = audioPid;
     currentChannel.videoPid = videoPid;
@@ -395,9 +402,10 @@ printf("\n**** Freq = %d, bandwidth = %d\n", configData.freq, configData.bandwid
 int32_t sectionReceivedCallback(uint8_t *buffer)
 {
     uint8_t tableId = *buffer;  
+	int i;
     if(tableId==0x00)
     {
-       //printf("\n%s -----PAT TABLE ARRIVED-----\n",__FUNCTION__);
+      	//printf("\n%s -----PAT TABLE ARRIVED-----\n",__FUNCTION__);
         
         if(parsePatTable(buffer,patTable) == TABLES_PARSE_OK)
         {
@@ -422,12 +430,18 @@ int32_t sectionReceivedCallback(uint8_t *buffer)
     }
 	else if(tableId == 0x4E)
 	{
-		printf("\n%s -----EIT TABLE ARRIVED-----\n",__FUNCTION__);
+		//printf("\n%s -----EIT TABLE ARRIVED-----\n",__FUNCTION__);
 		if(parseEitTable(buffer,eitTable) == TABLES_PARSE_OK){
-			if(addEitToList() != 0){
-				printf("\nCannot add event info!\n");
+			if((eitTable->eitEventInfoArray[0].runningStatus == 4) && (eitTable->eitHeader.serviceId == currentChannel.serviceId)){
+				//printEitTable(eitTable);
+				strcpy(currentChannel.eventName, eitTable->eitEventInfoArray[0].shortEventDescriptor.eventName);
+				currentChannel.eventNameLength = eitTable->eitEventInfoArray[0].shortEventDescriptor.eventNameLength;
+				for(i = 0; i < 5; i++){
+					//printf("\nTime: %X", eitTable->eitEventInfoArray[0].startTime[i]);
+					currentChannel.startTime[i] = eitTable->eitEventInfoArray[0].startTime[i];
+				}
 			}
-			printEitTable(eitTable);
+			//printEitTable(eitTable);
 			pthread_mutex_lock(&demuxMutex);
 			pthread_cond_signal(&demuxCond);
 			pthread_mutex_unlock(&demuxMutex);

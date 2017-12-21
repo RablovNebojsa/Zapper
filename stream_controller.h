@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <linux/input.h>
 #include <signal.h>
+#include <string.h>
 
 /**
  * @brief Structure that defines stream controller error
@@ -28,6 +29,7 @@ typedef enum _StreamControllerError
  */
 typedef struct _ChannelInfo
 {
+	uint16_t	serviceId;
 	int16_t 	programNumber;
 	int16_t		audioPid;
 	int16_t 	videoPid;
