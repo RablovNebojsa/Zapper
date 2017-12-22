@@ -3,6 +3,8 @@
 
 #include "pthread.h"
 #include <stdio.h>
+#include <string.h>
+#include <signal.h>
 
 /**
  * @brief Enumeration of possible graphic controller error codes
@@ -14,12 +16,12 @@ typedef enum _GraphicControllerError{
 }GraphicControllerError
 
 typedef struct _GraphicStatus{
-	bool	showVolume;
+	bool	showVolume = false;
 	uint8_t	volumeValue;
-	bool	showChannelNumber;
+	bool	showChannelNumber = false;
 	uint8_t	channelNumberValue;
-	bool	showInfoBannerl;
-	char*	infoBannerText;
+	bool	showInfoBannerl = false;
+	char*	infoBannerText[256];
 }GraphicStatus;
 
 GraphicControllerError graphicConntrollerInit();
