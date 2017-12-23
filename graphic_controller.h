@@ -5,23 +5,26 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <stdbool.h>
+#include <directfb.h>
+#include <stdint.h>
 
 /**
  * @brief Enumeration of possible graphic controller error codes
  */
 typedef enum _GraphicControllerError{
-	GRAPHIC_NO_ERROR = 0;
+	GRAPHIC_NO_ERROR = 0,
 	GRAPHIC_ERROR,
 	GRAPHIC_THREAD_ERROR
-}GraphicControllerError
+}GraphicControllerError;
 
 typedef struct _GraphicStatus{
-	bool	showVolume = false;
+	bool	showVolume;
 	uint8_t	volumeValue;
-	bool	showChannelNumber = false;
+	bool	showChannelNumber;
 	uint8_t	channelNumberValue;
-	bool	showInfoBannerl = false;
-	char*	infoBannerText[256];
+	bool	showInfoBanner;
+	char	infoBannerText[256];
 }GraphicStatus;
 
 GraphicControllerError graphicConntrollerInit();

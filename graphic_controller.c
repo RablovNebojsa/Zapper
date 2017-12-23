@@ -12,9 +12,10 @@ if (err != DFB_OK)                                          \
   }                                                         \
 }
 
-#define FRAME_WIDTH 100
-#define FRAME_HEIGHT 50
+#define FRAME_WIDTH 20
+#define FRAME_HEIGHT 10
 #define CHANNEL_NUMBER_HEIGHT 50
+
 #define INFO_BANNER_HEIGHT 100
 
 static GraphicStatus graphicStatus;
@@ -26,7 +27,10 @@ static int32_t screenHeight = 0;
 static bool threadFlag = false;
 static pthread_mutex_t graphicMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t gfxThread;
+static pthread_cond_t deinitCond = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t deinitMutex = PTHREAD_MUTEX_INITIALIZER;
 
+static int32_t timerFlags = 0;
 static timer_t volumeTimer;
 static timer_t channelNumberTimer;
 static timer_t infoBannerTimer;
@@ -41,32 +45,41 @@ static int32_t drawInfoBanner();
 static void hideVolume(union sigval signalArg);
 static void hideChannelNumber(union sigval signalArg);
 static void hideInfoBanner(union sigval signalArg);
-static int32_t timerInit(timer_t timer, void (*callback)(union sigval signalArg));
+static int32_t timerInit();
 
 GraphicControllerError graphicConntrollerInit()
 {
-	if(timerInit(volumeTimer, hideVolume) != 0){
-		prinntf("\nCannot initialize volumeTimer\n");
-	}
-	if(timerInit(channelNumberTimer, hideChannelNumber) != 0){
-		prinntf("\nCannot initialize channelNumberTimer\n");
-	}
-	if(timerInit(infoBannerTimer, hideInfoBanner) != 0){
-		prinntf("\nCannot initialize infoBannerTimer\n");
-	}
-	
+
+printf("\n*** Kreiranje threada!\n");
+
+	graphicStatus.showVolume = false;
+	graphicStatus.showChannelNumber = false;
+	graphicStatus.showInfoBanner = false;
+
+	dfbInit();
+	timerInit();
+
 	if (pthread_create(&gfxThread, NULL, &graphicControllerTask, NULL))
 	{
 		printf("Error creating graphic rendering task!\n");
 		return GRAPHIC_ERROR;
 	}
-
 	return GRAPHIC_NO_ERROR;
 }
 
 GraphicControllerError graphicConntrollerDeinit()
 {
+	pthread_mutex_lock(&deinitMutex);
+	if (ETIMEDOUT == pthread_cond_wait(&deinitCond, &deinitMutex))
+	{
+		printf("\n%s : ERROR Lock timeout exceeded!\n", __FUNCTION__);
+	}
+	pthread_mutex_unlock(&deinitMutex);
+	
+	dfbDeinit();
+
     threadFlag = true;
+
     if (pthread_join(gfxThread, NULL))
     {
         printf("\n%s : ERROR pthread_join fail!\n", __FUNCTION__);
@@ -78,6 +91,7 @@ GraphicControllerError graphicConntrollerDeinit()
 
 GraphicControllerError showVolume(const uint8_t value)
 {
+	int32_t timerFlags = 0;
 	/* stop volumeTimer timer */
 	memset(&timerSpec,0,sizeof(timerSpec));
 	if(timer_settime(volumeTimer,0,&timerSpec,&timerSpecOld) == -1){
@@ -101,6 +115,7 @@ GraphicControllerError showVolume(const uint8_t value)
 
 GraphicControllerError showChannelNumber(const uint8_t value)
 {
+
 	/* stop channelNumberTimer timer */
     memset(&timerSpec,0,sizeof(timerSpec));
     if(timer_settime(channelNumberTimer,0,&timerSpec,&timerSpecOld) == -1){
@@ -127,15 +142,13 @@ GraphicControllerError showInfoBanner(const char* text)
     memset(&timerSpec,0,sizeof(timerSpec));
     if(timer_settime(infoBannerTimer,0,&timerSpec,&timerSpecOld) == -1){
         printf("Error setting timer in %s!\n", __FUNCTION__);
-    }
-	
-	graphicStatus.showInfoBannerl = true;
+    }	
+	graphicStatus.showInfoBanner = true;
 	strcpy(graphicStatus.infoBannerText, text);
-	
+
 	/* specify the timer timeout time */
 	timerSpec.it_value.tv_sec = 3;
-	timerSpec.it_value.tv_nsec = 0;
-	
+	timerSpec.it_value.tv_nsec = 0;	
 	if(timer_settime(infoBannerTimer,timerFlags,&timerSpec,&timerSpecOld) == -1){
 		printf("Error setting timer in %s!\n", __FUNCTION__);
 		return 1;
@@ -145,43 +158,73 @@ GraphicControllerError showInfoBanner(const char* text)
 
 void* graphicControllerTask()
 {
-    DFBCHECK(primary->SetColor(primary, 0x00, 0x00, 0x00, 0xff));
-    DFBCHECK(primary->FillRectangle(primary, 0, 0, screenWidth, screenHeight));
 	while(!threadFlag){
+		DFBCHECK(primary->SetColor(primary, 0x00, 0x00, 0x00, 0x00));
+    	DFBCHECK(primary->FillRectangle(primary, 0, 0, screenWidth, screenHeight));
 		/* Show volume? */
-		if(showVolume){
+		if(graphicStatus.showVolume){
 			drawVolume();		
 		}
 		/* Show channel number? */
-		if(showChannelNumber){
+		if(graphicStatus.showChannelNumber){
 			drawChannelNumber();
 		}
 		/* Show info banner? */
-		if(showInfoBannerl){
+		if(graphicStatus.showInfoBanner){
 			drawInfoBanner();
 		}
 	    /* update screen */
 		DFBCHECK(primary->Flip(primary, NULL, 0));
-		sleep(16);
+		usleep(16000);
 	}
+	pthread_mutex_lock(&deinitMutex);
+	pthread_cond_signal(&deinitCond);
+	pthread_mutex_unlock(&deinitMutex);
 }
 
-int32_t timerInit(timer_t timer, void (*callback)(union sigval signalArg))
+int32_t timerInit()
 {
 	struct sigevent signalEvent;
 	int ret;
 	signalEvent.sigev_notify = SIGEV_THREAD;
-	signalEvent.sigev_notify_function = *callback;
+	signalEvent.sigev_notify_function = hideVolume;
 	signalEvent.sigev_value.sival_ptr = NULL;
 	signalEvent.sigev_notify_attributes = NULL;
+
 	ret = timer_create(/*clock for time measuring*/CLOCK_REALTIME,
                        /*timer settings*/&signalEvent,
-                       /*where to store the ID of the newly created timer*/&timer);
+                       /*where to store the ID of the newly created timer*/&volumeTimer);
 	if(ret != 0){
 		printf("\nTimer can not be created.\n");
 		return 1;
 	}
-	printf("\n*** Timer initalized!\n");
+
+	signalEvent.sigev_notify = SIGEV_THREAD;
+	signalEvent.sigev_notify_function = hideChannelNumber;
+	signalEvent.sigev_value.sival_ptr = NULL;
+	signalEvent.sigev_notify_attributes = NULL;
+
+	ret = timer_create(/*clock for time measuring*/CLOCK_REALTIME,
+                       /*timer settings*/&signalEvent,
+                       /*where to store the ID of the newly created timer*/&channelNumberTimer);
+	if(ret != 0){
+		printf("\nTimer can not be created.\n");
+		return 1;
+	}
+
+	signalEvent.sigev_notify = SIGEV_THREAD;
+	signalEvent.sigev_notify_function = hideInfoBanner;
+	signalEvent.sigev_value.sival_ptr = NULL;
+	signalEvent.sigev_notify_attributes = NULL;
+
+	ret = timer_create(/*clock for time measuring*/CLOCK_REALTIME,
+                       /*timer settings*/&signalEvent,
+                       /*where to store the ID of the newly created timer*/&infoBannerTimer);
+	if(ret != 0){
+		printf("\nTimer can not be created.\n");
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -189,7 +232,7 @@ int32_t dfbInit()
 {
 	/* initialize DirectFB */
 	DFBSurfaceDescription surfaceDesc;
-	DFBCHECK(DirectFBInit(&argc, &argv)); // Ovo proveri, ali verovatno moram proslediti main argumente
+	DFBCHECK(DirectFBInit(NULL, NULL)); // Ovo proveri, ali verovatno moram proslediti main argumente
 	DFBCHECK(DirectFBCreate(&dfbInterface));
 	DFBCHECK(dfbInterface->SetCooperativeLevel(dfbInterface, DFSCL_FULLSCREEN));
 	
@@ -215,11 +258,11 @@ int32_t dfbDeinit()
 int32_t drawVolume()
 {
 	IDirectFBImageProvider *provider;
+	DFBSurfaceDescription surfaceDesc;
 	IDirectFBSurface *logoSurface = NULL;
 	int32_t logoHeight, logoWidth;
 	
     /* create the image provider for the specified file */
-	DFBCHECK(dfbInterface->CreateImageProvider(dfbInterface, "dfblogo_alpha.png", &provider));
 	switch(graphicStatus.volumeValue){
 		case 0: 
 			DFBCHECK(dfbInterface->CreateImageProvider(dfbInterface, "volume_0.png", &provider));
@@ -255,7 +298,7 @@ int32_t drawVolume()
 			DFBCHECK(dfbInterface->CreateImageProvider(dfbInterface, "volume_10.png", &provider));
 			break;
 		default:
-			printf("\nVolume: %d\n",graphicStatus.volumeValue):
+			printf("\nVolume: %d\n",graphicStatus.volumeValue);
 	}
     /* get surface descriptor for the surface where the image will be rendered */
 	DFBCHECK(provider->GetSurfaceDescription(provider, &surfaceDesc));
@@ -269,7 +312,7 @@ int32_t drawVolume()
 	
     /* fetch the logo size and add (blit) it to the screen */
 	DFBCHECK(logoSurface->GetSize(logoSurface, &logoWidth, &logoHeight));
-	DFBCHECK(primary->Blit(primary, logoSurface, NULL, screenWidth/2 - logoWidth/2, screenHeight/2 - logoHeight/2);
+	DFBCHECK(primary->Blit(primary, logoSurface, NULL, screenWidth/2 - logoWidth/2, screenHeight/2 - logoHeight/2));
  	
 	return 0;
 }
@@ -296,7 +339,7 @@ int32_t drawChannelNumber()
 	
 	/* draw the string */
     DFBCHECK(primary->SetColor(primary, 0xFF, 0xFF, 0xFF, 0xff));
-	DFBCHECK(primary->DrawString(primary, channelNumberString, -1, screenWidth/10, screenHeight/10 + CHANNEL_NUMBER_HEIGHT/2, DSTF_CENTER));
+	DFBCHECK(primary->DrawString(primary, channelNumberString, -1, screenWidth/10 + 50 , screenHeight/10 + 50, DSTF_CENTER));
 
 	return 0;
 }
@@ -323,10 +366,9 @@ int32_t drawInfoBanner()
 	DFBCHECK(primary->DrawString(primary,
                                  /*text to be drawn*/ graphicStatus.infoBannerText,
                                  /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
-                                 /*x coordinate of the lower left corner of the resulting text*/ screenHeight,
-                                 /*y coordinate of the lower left corner of the resulting text*/ 0,
+                                 /*x coordinate of the lower left corner of the resulting text*/ 3,
+                                 /*y coordinate of the lower left corner of the resulting text*/ screenHeight - 50,
                                  /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
-	
 	return 0;	
 }
 
@@ -342,5 +384,5 @@ void hideChannelNumber(union sigval signalArg)
 
 void hideInfoBanner(union sigval signalArg)
 {
-	graphicStatus.showInfoBannerl = false;
+	graphicStatus.showInfoBanner = false;
 }

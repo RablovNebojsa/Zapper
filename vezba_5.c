@@ -1,6 +1,7 @@
 #include "remote_controller.h"
 #include "stream_controller.h"
 #include "config_parser.h"
+#include "graphic_controller.h"
 
 static inline void textColor(int32_t attr, int32_t fg, int32_t bg)
 {
@@ -23,6 +24,13 @@ if (x != 0)                                                                 \
  }                                                                          \
 }
 
+#define MUTE 0
+#define MIN_VOLUME 0
+#define MAX_VOLUME 10
+#define DEFAULT_VOLUME 3
+
+static bool isMuted = false;
+static int32_t volume = DEFAULT_VOLUME;
 static int32_t programNumberBuffer;
 static int16_t counter = 1;
 static timer_t keyPressTimer;
@@ -40,6 +48,8 @@ static void timeOut(union sigval signalArg);
 int main(int argc, char *argv[])
 {
 	ERRORCHECK(parseConfigFile((char*)argv[1], &configData));	
+
+	ERRORCHECK(graphicConntrollerInit());
 
 	ERRORCHECK(initTimer());
 	/* initialize remote controller module */
@@ -59,6 +69,8 @@ int main(int argc, char *argv[])
 	}
 	pthread_mutex_unlock(&deinitMutex);
 
+	//ERRORCHECK(graphicConntrollerDeinit);
+
 	/* unregister remote controller callback */
 	ERRORCHECK(unregisterRemoteControllerCallback(remoteControllerCallback));
 
@@ -67,6 +79,8 @@ int main(int argc, char *argv[])
 
 	/* deinitialize stream controller module */
 	ERRORCHECK(streamControllerDeinit());
+
+	//ERRORCHECK(graphicConntrollerDeinit);
 
 	timer_delete(keyPressTimer);
 	  
@@ -121,10 +135,9 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 		    printf("\nInfo pressed\n");          
 		    if (getChannelInfo(&channelInfo) == SC_NO_ERROR)
 		    {
+				showInfoBanner(channelInfo.eventName);
 		        printf("\n********************* Channel info *********************\n");
 		        printf("Program number: %d\n", channelInfo.programNumber);
-		        //printf("Audio pid: %d\n", channelInfo.audioPid);
-		        //printf("Video pid: %d\n", channelInfo.videoPid);
 				printf("Service ID: %d\n", channelInfo.serviceId);
 				printf("Event Name: %s\n", channelInfo.eventName);
 				printf("Start time: %x:%x:%x\n", channelInfo.startTime[2], channelInfo.startTime[3], channelInfo.startTime[4]);
@@ -138,6 +151,31 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 		case KEYCODE_P_MINUS:
 		    	printf("\nCH- pressed\n");
             		channelDown();
+			break;
+		case KEYCODE_V_PLUS:
+			if(volume < MAX_VOLUME){			
+				volume++;
+			}
+			isMuted = false;
+			showVolume(volume);
+			break;
+		case KEYCODE_V_MINUS:
+			if(volume > MIN_VOLUME){
+				volume--;
+			}
+			isMuted = false;
+			showVolume(volume);
+			break;
+		case KEYCODE_MUTE:
+			if(isMuted){
+				isMuted = false;
+				volume = DEFAULT_VOLUME;
+				showVolume(volume);
+			}else{
+				isMuted = true;
+				showVolume(MUTE);
+				volume = DEFAULT_VOLUME;
+			}
 			break;
 		case KEYCODE_EXIT:
 			printf("\nExit pressed\n");
@@ -162,13 +200,16 @@ int32_t numKeyPressed(uint16_t keyPressed)
 		if(channelChange(programNumberBuffer)){
 			printf("\n Channel %d unavailable!\n", programNumberBuffer);
 		}
+		showChannelNumber(programNumberBuffer);
 		counter = 1;
 		return 0;
 	}else if(counter == 2) {
 		programNumberBuffer = (programNumberBuffer * 10) + keyPressed;
+		showChannelNumber(programNumberBuffer);
 		counter = 3;
 	}else{
 		programNumberBuffer = keyPressed;
+		showChannelNumber(programNumberBuffer);
 		counter = 2;
 	}
 	memset(&timerSpec,0,sizeof(timerSpec));
