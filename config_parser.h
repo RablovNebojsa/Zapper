@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "tdp_api.h"
 #include "stream_controller.h"
 
 #define bufSize 1024

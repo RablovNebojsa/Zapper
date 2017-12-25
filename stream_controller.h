@@ -14,6 +14,8 @@
 #include <signal.h>
 #include <string.h>
 
+#define DEFAULT_VOLUME 3
+
 /**
  * @brief Structure that defines stream controller error
  */
@@ -30,7 +32,7 @@ typedef enum _StreamControllerError
 typedef struct _ChannelInfo
 {
 	uint16_t	serviceId;
-	int16_t 	programNumber;
+	uint32_t 	programNumber;
 	int16_t		audioPid;
 	int16_t 	videoPid;
 	uint8_t		eventNameLength;
@@ -39,12 +41,12 @@ typedef struct _ChannelInfo
 }ChannelInfo;
 
 /**
-/* @brief Structure that holds starting parameters
+/* @brief Structure that defines starting parameters
 */
 typedef struct _config {
 	uint32_t 	freq;
 	uint32_t 	bandwidth;
-	uint32_t 	modul;
+	t_Module 	modul;
 	uint32_t 	programNumber;
 } Config;
 
@@ -63,6 +65,22 @@ StreamControllerError streamControllerInit(const Config initData);
 StreamControllerError streamControllerDeinit();
 
 /**
+ * @brief Set actual volume
+ *
+ * @param [in]  volume - value for volume 
+ * @return stream controller error code
+ */
+StreamControllerError setPlayerVolume(const uint32_t volume);
+
+/**
+ * @brief Get actual volume 
+ *
+ * @param [out]  volume - locatin to save volume value
+ * @return stream controller error code
+ */
+StreamControllerError getPlayerVolume(uint32_t *volume);
+
+/**
  * @brief Channel up
  *
  * @return stream controller error
@@ -79,8 +97,7 @@ StreamControllerError channelDown();
 /**
  * @brief Registers numeric key press
  *
- * @param [in]  program - program number from remote controller
-		(change to program - 1)
+ * @param [in]  program - program number from remote controller (change to program - 1)
  * @return stream controller error code
  */
 StreamControllerError channelChange(uint32_t program);

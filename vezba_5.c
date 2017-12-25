@@ -28,10 +28,16 @@ if (x != 0)                                                                 \
 #define MIN_VOLUME 0
 #define MAX_VOLUME 10
 #define DEFAULT_VOLUME 3
+#define VOLUME_INCEMENT 200000000
 
+static char infoBannerStart[30];
+static char infoBannerName[50];
+static char infoBannerPid[50];
+static char infoBannerChannel[30];
+static uint32_t playerVolume = 0;
 static bool isMuted = false;
 static int32_t volume = DEFAULT_VOLUME;
-static int32_t programNumberBuffer;
+static uint32_t programNumberBuffer;
 static int16_t counter = 1;
 static timer_t keyPressTimer;
 static Config configData;
@@ -42,16 +48,20 @@ static ChannelInfo channelInfo;
 
 static void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value);
 static int32_t initTimer();
-static int32_t numKeyPressed(uint16_t keyPressed);
+static int32_t numKeyPressed(uint32_t keyPressed);
 static void timeOut(union sigval signalArg);
 
 int main(int argc, char *argv[])
 {
+	/* Reading initial data from config file */
 	ERRORCHECK(parseConfigFile((char*)argv[1], &configData));	
 
+	/* initialize graphic controller module */
 	ERRORCHECK(graphicConntrollerInit());
 
+	/* Initialize keyPressTimer */
 	ERRORCHECK(initTimer());
+
 	/* initialize remote controller module */
 	ERRORCHECK(remoteControllerInit(configData));
 
@@ -60,6 +70,9 @@ int main(int argc, char *argv[])
 
 	/* initialize stream controller module */
 	ERRORCHECK(streamControllerInit(configData));
+
+	/* Set default volume on start */
+	setPlayerVolume(DEFAULT_VOLUME * VOLUME_INCEMENT);
 
 	/* wait for a EXIT remote controller key press event */
 	pthread_mutex_lock(&deinitMutex);
@@ -80,7 +93,8 @@ int main(int argc, char *argv[])
 	/* deinitialize stream controller module */
 	ERRORCHECK(streamControllerDeinit());
 
-	//ERRORCHECK(graphicConntrollerDeinit);
+	/* deinitialize graphic controller module */
+	ERRORCHECK(graphicConntrollerDeinit);
 
 	timer_delete(keyPressTimer);
 	  
@@ -134,8 +148,13 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 		case KEYCODE_INFO:
 		    printf("\nInfo pressed\n");          
 		    if (getChannelInfo(&channelInfo) == SC_NO_ERROR)
-		    {
-				showInfoBanner(channelInfo.eventName);
+		    {	
+				sprintf(infoBannerChannel, "Channel %d",channelInfo.programNumber);
+				sprintf(infoBannerPid, "Video PID: %d, Audio PID: %d",channelInfo.videoPid, channelInfo.audioPid);
+				sprintf(infoBannerName,"Event name: %s", channelInfo.eventName + 1);
+				sprintf(infoBannerStart,"Start time: %x:%x:%x", channelInfo.startTime[2], channelInfo.startTime[3], channelInfo.startTime[4]);
+				showInfoBanner(infoBannerName, infoBannerStart, infoBannerPid, infoBannerChannel);
+
 		        printf("\n********************* Channel info *********************\n");
 		        printf("Program number: %d\n", channelInfo.programNumber);
 				printf("Service ID: %d\n", channelInfo.serviceId);
@@ -146,16 +165,17 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 			break;
 		case KEYCODE_P_PLUS:
 			printf("\nCH+ pressed\n");
-            		channelUp();
+            channelUp();
 			break;
 		case KEYCODE_P_MINUS:
-		    	printf("\nCH- pressed\n");
-            		channelDown();
+		    printf("\nCH- pressed\n");
+            channelDown();
 			break;
 		case KEYCODE_V_PLUS:
 			if(volume < MAX_VOLUME){			
 				volume++;
 			}
+			setPlayerVolume(volume * VOLUME_INCEMENT);
 			isMuted = false;
 			showVolume(volume);
 			break;
@@ -163,6 +183,7 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 			if(volume > MIN_VOLUME){
 				volume--;
 			}
+			setPlayerVolume(volume * VOLUME_INCEMENT);
 			isMuted = false;
 			showVolume(volume);
 			break;
@@ -170,10 +191,12 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 			if(isMuted){
 				isMuted = false;
 				volume = DEFAULT_VOLUME;
+				setPlayerVolume(volume * VOLUME_INCEMENT);
 				showVolume(volume);
 			}else{
 				isMuted = true;
 				showVolume(MUTE);
+				setPlayerVolume(MUTE * VOLUME_INCEMENT);
 				volume = DEFAULT_VOLUME;
 			}
 			break;
@@ -188,7 +211,7 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 	}
 }
 
-int32_t numKeyPressed(uint16_t keyPressed)
+int32_t numKeyPressed(uint32_t keyPressed)
 {
 	struct itimerspec timerSpec;
 	struct itimerspec timerSpecOld;
@@ -197,6 +220,7 @@ int32_t numKeyPressed(uint16_t keyPressed)
 	timer_settime(keyPressTimer,timerFlags,&timerSpec,&timerSpecOld);
 	if(counter == 3){
 		programNumberBuffer = (programNumberBuffer * 10) + keyPressed;
+printf("*** %d",programNumberBuffer);
 		if(channelChange(programNumberBuffer)){
 			printf("\n Channel %d unavailable!\n", programNumberBuffer);
 		}
@@ -214,7 +238,7 @@ int32_t numKeyPressed(uint16_t keyPressed)
 	}
 	memset(&timerSpec,0,sizeof(timerSpec));
 	/* specify the timer timeout time */
-	timerSpec.it_value.tv_sec = 3;
+	timerSpec.it_value.tv_sec = 1;
 	timerSpec.it_value.tv_nsec = 0;
 
 	if(timer_settime(keyPressTimer,timerFlags,&timerSpec,&timerSpecOld) == -1){

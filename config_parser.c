@@ -54,7 +54,10 @@ static ConfigError checkConfigParametar(char* param, Config* configStruct){
 		token = strtok(NULL,"=");
 		// Ovde bi se mogao iskoristiti RegEx
 		if((!strcmp(token, "DVB_T")) || (!strcmp(token, "dvb_t"))){
-		    configStruct->modul = 0;
+		    configStruct->modul = DVB_T;
+		}else{
+			printf("\nModul can be DVB_T or DVBT_T2. Default value is DVB_T\n");
+			configStruct->modul = DVB_T;	
 		}
 	}
 	else if(!strcmp(token, "programNumber")){

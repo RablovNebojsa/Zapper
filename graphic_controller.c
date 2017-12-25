@@ -12,15 +12,11 @@ if (err != DFB_OK)                                          \
   }                                                         \
 }
 
-#define FRAME_WIDTH 20
-#define FRAME_HEIGHT 10
-#define CHANNEL_NUMBER_HEIGHT 50
-
-#define INFO_BANNER_HEIGHT 100
 
 static GraphicStatus graphicStatus;
 static IDirectFBSurface *primary = NULL;
 IDirectFB *dfbInterface = NULL;
+static IDirectFBFont *fontInterface = NULL;
 static int32_t screenWidth = 0;
 static int32_t screenHeight = 0;
 
@@ -38,7 +34,6 @@ static struct itimerspec timerSpec;
 static struct itimerspec timerSpecOld;
 
 static void* graphicControllerTask();
-static int32_t dfbInit();
 static int32_t drawVolume();
 static int32_t drawChannelNumber();
 static int32_t drawInfoBanner();
@@ -46,18 +41,24 @@ static void hideVolume(union sigval signalArg);
 static void hideChannelNumber(union sigval signalArg);
 static void hideInfoBanner(union sigval signalArg);
 static int32_t timerInit();
+static int32_t timerDeinit();
 
 GraphicControllerError graphicConntrollerInit()
 {
-
-printf("\n*** Kreiranje threada!\n");
-
 	graphicStatus.showVolume = false;
 	graphicStatus.showChannelNumber = false;
 	graphicStatus.showInfoBanner = false;
 
-	dfbInit();
-	timerInit();
+	if(dfbInit()){
+		printf("\n%s: DFB initialization error!\n",__FUNCTION__);
+		return GRAPHIC_ERROR;
+	}
+	if(timerInit()){
+		printf("\n%s: Timer initialization error!\n",__FUNCTION__);
+		primary->Release(primary);
+		dfbInterface->Release(dfbInterface);
+		return GRAPHIC_ERROR;
+	}
 
 	if (pthread_create(&gfxThread, NULL, &graphicControllerTask, NULL))
 	{
@@ -69,27 +70,27 @@ printf("\n*** Kreiranje threada!\n");
 
 GraphicControllerError graphicConntrollerDeinit()
 {
+	threadFlag = true;
 	pthread_mutex_lock(&deinitMutex);
 	if (ETIMEDOUT == pthread_cond_wait(&deinitCond, &deinitMutex))
 	{
 		printf("\n%s : ERROR Lock timeout exceeded!\n", __FUNCTION__);
 	}
 	pthread_mutex_unlock(&deinitMutex);
-	
-	dfbDeinit();
-
-    threadFlag = true;
 
     if (pthread_join(gfxThread, NULL))
     {
         printf("\n%s : ERROR pthread_join fail!\n", __FUNCTION__);
         return GRAPHIC_THREAD_ERROR;
     }
+	dfbDeinit();
+    
+	timerDeinit();
 
 	return GRAPHIC_NO_ERROR;
 }
 
-GraphicControllerError showVolume(const uint8_t value)
+GraphicControllerError showVolume(const uint32_t value)
 {
 	int32_t timerFlags = 0;
 	/* stop volumeTimer timer */
@@ -113,7 +114,7 @@ GraphicControllerError showVolume(const uint8_t value)
 	return GRAPHIC_NO_ERROR;
 }
 
-GraphicControllerError showChannelNumber(const uint8_t value)
+GraphicControllerError showChannelNumber(const uint32_t value)
 {
 
 	/* stop channelNumberTimer timer */
@@ -136,7 +137,7 @@ GraphicControllerError showChannelNumber(const uint8_t value)
 	return GRAPHIC_NO_ERROR;
 }
 
-GraphicControllerError showInfoBanner(const char* text)
+GraphicControllerError showInfoBanner(const char* name, const char* start, const char* pid, const char* channel)
 {
 	/* stop infoBannerTimer timer */
     memset(&timerSpec,0,sizeof(timerSpec));
@@ -144,10 +145,13 @@ GraphicControllerError showInfoBanner(const char* text)
         printf("Error setting timer in %s!\n", __FUNCTION__);
     }	
 	graphicStatus.showInfoBanner = true;
-	strcpy(graphicStatus.infoBannerText, text);
+	strcpy(graphicStatus.infoBannerName, name);
+	strcpy(graphicStatus.infoBannerStart, start);
+	strcpy(graphicStatus.infoBannerPid, pid);	
+	strcpy(graphicStatus.infoBannerChannel, channel);	
 
 	/* specify the timer timeout time */
-	timerSpec.it_value.tv_sec = 3;
+	timerSpec.it_value.tv_sec = 5;
 	timerSpec.it_value.tv_nsec = 0;	
 	if(timer_settime(infoBannerTimer,timerFlags,&timerSpec,&timerSpecOld) == -1){
 		printf("Error setting timer in %s!\n", __FUNCTION__);
@@ -179,7 +183,7 @@ void* graphicControllerTask()
 	}
 	pthread_mutex_lock(&deinitMutex);
 	pthread_cond_signal(&deinitCond);
-	pthread_mutex_unlock(&deinitMutex);
+	pthread_mutex_unlock(&deinitMutex); 
 }
 
 int32_t timerInit()
@@ -195,7 +199,7 @@ int32_t timerInit()
                        /*timer settings*/&signalEvent,
                        /*where to store the ID of the newly created timer*/&volumeTimer);
 	if(ret != 0){
-		printf("\nTimer can not be created.\n");
+		printf("\nTimer cannot be created.\n");
 		return 1;
 	}
 
@@ -208,7 +212,7 @@ int32_t timerInit()
                        /*timer settings*/&signalEvent,
                        /*where to store the ID of the newly created timer*/&channelNumberTimer);
 	if(ret != 0){
-		printf("\nTimer can not be created.\n");
+		printf("\nTimer cannot be created.\n");
 		return 1;
 	}
 
@@ -221,10 +225,17 @@ int32_t timerInit()
                        /*timer settings*/&signalEvent,
                        /*where to store the ID of the newly created timer*/&infoBannerTimer);
 	if(ret != 0){
-		printf("\nTimer can not be created.\n");
+		printf("\nTimer cannot be created.\n");
 		return 1;
 	}
 
+	return 0;
+}
+
+int32_t timerDeinit(){
+	timer_delete(volumeTimer);
+	timer_delete(channelNumberTimer);
+	timer_delete(infoBannerTimer);
 	return 0;
 }
 
@@ -232,7 +243,7 @@ int32_t dfbInit()
 {
 	/* initialize DirectFB */
 	DFBSurfaceDescription surfaceDesc;
-	DFBCHECK(DirectFBInit(NULL, NULL)); // Ovo proveri, ali verovatno moram proslediti main argumente
+	DFBCHECK(DirectFBInit(NULL, NULL));
 	DFBCHECK(DirectFBCreate(&dfbInterface));
 	DFBCHECK(dfbInterface->SetCooperativeLevel(dfbInterface, DFSCL_FULLSCREEN));
 	
@@ -322,13 +333,12 @@ int32_t drawChannelNumber()
 	char channelNumberString[4];
 	
     /* draw the frame */
-    DFBCHECK(primary->SetColor(primary, 0x00, 0x00, 0x00, 0xff));
+    DFBCHECK(primary->SetColor(primary, 0x00, 0x00, 0x00, 0x9f));
     DFBCHECK(primary->FillRectangle(primary, screenWidth/10, screenHeight/10, screenWidth/10 + FRAME_WIDTH, screenHeight/10 + FRAME_HEIGHT));
 
     /* generate channel number string */
     sprintf(channelNumberString,"%d",graphicStatus.channelNumberValue);	
-// Pitaj da li da ove lokalne interfejse napravim kao globalne zbog ustede vremena?
-	IDirectFBFont *fontInterface = NULL;
+
 	DFBFontDescription fontDesc;
 	
 	fontDesc.flags = DFDESC_HEIGHT;
@@ -346,16 +356,15 @@ int32_t drawChannelNumber()
 
 int32_t drawInfoBanner()
 {
-	IDirectFBFont *fontInterface = NULL;
 	DFBFontDescription fontDesc;
 	
     /* draw the frame */
-    DFBCHECK(primary->SetColor(primary, 0x00, 0x00, 0x00, 0xff));
+    DFBCHECK(primary->SetColor(primary, 0x00, 0x00, 0x00, 0x9f));
     DFBCHECK(primary->FillRectangle(primary, 0, screenHeight - INFO_BANNER_HEIGHT, screenWidth, screenHeight));
 	
     /* specify the height of the font by raising the appropriate flag and setting the height value */
 	fontDesc.flags = DFDESC_HEIGHT;
-	fontDesc.height = 48;
+	fontDesc.height = 40;
 	
     /* create the font and set the created font for primary surface text drawing */
 	DFBCHECK(dfbInterface->CreateFont(dfbInterface, "/home/galois/fonts/DejaVuSans.ttf", &fontDesc, &fontInterface));
@@ -364,10 +373,29 @@ int32_t drawInfoBanner()
     /* draw the text */
     DFBCHECK(primary->SetColor(primary, 0xFF, 0xFF, 0xFF, 0xff));
 	DFBCHECK(primary->DrawString(primary,
-                                 /*text to be drawn*/ graphicStatus.infoBannerText,
+                                 /*text to be drawn*/ graphicStatus.infoBannerChannel,
                                  /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
                                  /*x coordinate of the lower left corner of the resulting text*/ 3,
-                                 /*y coordinate of the lower left corner of the resulting text*/ screenHeight - 50,
+                                 /*y coordinate of the lower left corner of the resulting text*/ screenHeight - 159,
+                                 /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
+	DFBCHECK(primary->DrawString(primary,
+                                 /*text to be drawn*/ graphicStatus.infoBannerName,
+                                 /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
+                                 /*x coordinate of the lower left corner of the resulting text*/ 3,
+                                 /*y coordinate of the lower left corner of the resulting text*/ screenHeight - 106,
+                                 /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
+	DFBCHECK(primary->DrawString(primary,
+                                 /*text to be drawn*/ graphicStatus.infoBannerStart,
+                                 /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
+                                 /*x coordinate of the lower left corner of the resulting text*/ 3,
+                                 /*y coordinate of the lower left corner of the resulting text*/ screenHeight - 53,
+                                 /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
+
+	DFBCHECK(primary->DrawString(primary,
+                                 /*text to be drawn*/ graphicStatus.infoBannerPid,
+                                 /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
+                                 /*x coordinate of the lower left corner of the resulting text*/ 3,
+                                 /*y coordinate of the lower left corner of the resulting text*/ screenHeight - 3,
                                  /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
 	return 0;	
 }

@@ -18,6 +18,7 @@ static uint32_t filterHandle = 0;
 static uint8_t threadExit = 0;
 static bool changeChannel = false;
 static int16_t programNumber = 0;
+static uint32_t playerVolume = 0;
 
 static ChannelInfo currentChannel;
 static bool isInitialized = false;
@@ -89,6 +90,24 @@ StreamControllerError streamControllerDeinit()
     return SC_NO_ERROR;
 }
 
+StreamControllerError setPlayerVolume(const uint32_t volume)
+{
+	if(Player_Volume_Set(playerHandle, volume) == ERROR){
+		printf("\n%s: Cannot set volume!\n", __FUNCTION__);
+		return SC_ERROR;
+	}
+	return SC_NO_ERROR;
+}
+
+StreamControllerError getPlayerVolume(uint32_t *volume)
+{
+	if(Player_Volume_Get(playerHandle, volume) == ERROR){
+		printf("\n%s: Cannot set volume!\n", __FUNCTION__);
+		return SC_ERROR;
+	}
+	return SC_NO_ERROR;
+}
+
 StreamControllerError channelUp()
 {   
     if (programNumber >= patTable->serviceInfoCount - 2)
@@ -156,11 +175,10 @@ StreamControllerError getChannelInfo(ChannelInfo* channelInfo)
     return SC_NO_ERROR;
 }
 
-
-
 /* Sets filter to receive current channel PMT table
  * Parses current channel PMT table when it arrives
  * Creates streams with current channel audio and video pids
+ * Sets filter to receive EIT table and start parsing EIT
  */
 void startChannel(int32_t channelNumber)
 {  
@@ -182,26 +200,7 @@ void startChannel(int32_t channelNumber)
         streamControllerDeinit();
 	}
 	pthread_mutex_unlock(&demuxMutex);
-    
-
-    /* free PMT table filter */
-    Demux_Free_Filter(playerHandle, filterHandle);
-    
-    /* set demux filter for receive EIT table */
-    if(Demux_Set_Filter(playerHandle, 0x0012, 0x4E, &filterHandle))
-	{
-		printf("\n%s : ERROR Demux_Set_Filter() fail\n", __FUNCTION__);
-        return;
-	}
-
-    /* wait for a EIT table to be parsed*/
-    pthread_mutex_lock(&demuxMutex);
-	if (ETIMEDOUT == pthread_cond_wait(&demuxCond, &demuxMutex))
-	{
-		printf("\n%s : ERROR Lock timeout exceeded!\n", __FUNCTION__);
-        streamControllerDeinit();
-	}
-	pthread_mutex_unlock(&demuxMutex);
+   
     
     /* get audio and video pids */
     int16_t audioPid = -1;
@@ -254,6 +253,25 @@ void startChannel(int32_t channelNumber)
             streamControllerDeinit();
         }
     }
+
+	/* free PMT table filter */
+    Demux_Free_Filter(playerHandle, filterHandle);
+    
+    /* set demux filter for receive EIT table */
+    if(Demux_Set_Filter(playerHandle, 0x0012, 0x4E, &filterHandle))
+	{
+		printf("\n%s : ERROR Demux_Set_Filter() fail\n", __FUNCTION__);
+        return;
+	}
+
+    /* wait for a EIT table to be parsed*/
+    pthread_mutex_lock(&demuxMutex);
+	if (ETIMEDOUT == pthread_cond_wait(&demuxCond, &demuxMutex))
+	{
+		printf("\n%s : ERROR Lock timeout exceeded!\n", __FUNCTION__);
+        streamControllerDeinit();
+	}
+	pthread_mutex_unlock(&demuxMutex);
     
     /* store current channel info */
 	currentChannel.serviceId = pmtTable->pmtHeader.programNumber;
@@ -433,11 +451,9 @@ int32_t sectionReceivedCallback(uint8_t *buffer)
 		//printf("\n%s -----EIT TABLE ARRIVED-----\n",__FUNCTION__);
 		if(parseEitTable(buffer,eitTable) == TABLES_PARSE_OK){
 			if((eitTable->eitEventInfoArray[0].runningStatus == 4) && (eitTable->eitHeader.serviceId == currentChannel.serviceId)){
-				//printEitTable(eitTable);
 				strcpy(currentChannel.eventName, eitTable->eitEventInfoArray[0].shortEventDescriptor.eventName);
 				currentChannel.eventNameLength = eitTable->eitEventInfoArray[0].shortEventDescriptor.eventNameLength;
 				for(i = 0; i < 5; i++){
-					//printf("\nTime: %X", eitTable->eitEventInfoArray[0].startTime[i]);
 					currentChannel.startTime[i] = eitTable->eitEventInfoArray[0].startTime[i];
 				}
 			}
@@ -448,10 +464,6 @@ int32_t sectionReceivedCallback(uint8_t *buffer)
 		}
 	}
     return 0;
-}
-
-int32_t addEitToList(){
-	
 }
 
 int32_t tunerStatusCallback(t_LockStatus status)
