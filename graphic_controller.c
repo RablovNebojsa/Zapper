@@ -1,6 +1,27 @@
+/****************************************************************************
+*
+* Univerzitet u Novom Sadu, Fakultet tehnickih nauka
+* Katedra za Računarsku Tehniku i Računarske Komunikacije
+*
+* -----------------------------------------------------
+* Ispitni zadatak iz predmeta:
+* PROGRAMSKA PODRSKA U TELEVIZIJI I OBRADI SLIKE
+* -----------------------------------------------------
+* TV Application
+* -----------------------------------------------------
+*
+* \file graphic_controller.c
+* \brief
+* Module that manages the display of graphic elements
+* Created on Dec 2017.
+*
+* @Author Nebojsa Rablov
+*
+*****************************************************************************/
+
 #include "graphic_controller.h"
 
-/* helper macro for error checking */
+/** helper macro for error checking */
 #define DFBCHECK(x...)                                      \
 {                                                           \
 DFBResult err = x;                                          \
@@ -11,37 +32,106 @@ if (err != DFB_OK)                                          \
     DirectFBErrorFatal( #x, err );                          \
   }                                                         \
 }
-
-
+/** @brief Structure that contains graphic elements displaying status and values */
 static GraphicStatus graphicStatus;
 static IDirectFBSurface *primary = NULL;
-IDirectFB *dfbInterface = NULL;
+static IDirectFB *dfbInterface = NULL;
 static IDirectFBFont *fontInterface = NULL;
 static int32_t screenWidth = 0;
 static int32_t screenHeight = 0;
 
 static bool threadFlag = false;
-static pthread_mutex_t graphicMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t gfxThread;
 static pthread_cond_t deinitCond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t deinitMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int32_t timerFlags = 0;
+/** @brief ID of timer that counts time for how long volume graphic element is displayed */
 static timer_t volumeTimer;
+/** @brief ID of timer that counts time for how long numeric input graphic element is displayed */
 static timer_t channelNumberTimer;
+/** @brief ID of timer that counts time for how long info banner graphic element is displayed */
 static timer_t infoBannerTimer;
+/** @brief Structure that contains specific timer information */
 static struct itimerspec timerSpec;
+/** @brief Structure that contains specific timer information */
 static struct itimerspec timerSpecOld;
 
+/**
+* @brief	Task of graphic controller thread
+*/
 static void* graphicControllerTask();
+
+/**
+* @brief	Function for drawing a graphic element for displaying the volume level
+* 			
+* @return	0 - for no error
+* @return 	-1 - for error
+*/
 static int32_t drawVolume();
+
+/**
+* @brief	Function for drawing a graphic element for displaying numbers pressed on remoter
+* 			
+* @return	0 - for no error
+* @return	-1 - for error
+*/
 static int32_t drawChannelNumber();
+
+/**
+* @brief	Function for drawing a graphic element for displaying information banner
+* 			
+* @return	0 - for no error
+* @return	-1 - for error	
+*/
 static int32_t drawInfoBanner();
+
+/**
+* @brief	Callback function that removes volume graphic, called on volumeTimer timer timeout
+*
+* @param	signalArg - Callback function arguments
+*/
 static void hideVolume(union sigval signalArg);
+
+/**
+* @brief	Callback function that removes channel number graphic, called on channelNumberTimer timer timeout
+*
+* @param	signalArg - Callback function arguments
+*/
 static void hideChannelNumber(union sigval signalArg);
+
+/**
+* @brief	Callback function that removes info banner graphic, called on infoBannerTimer timer timeout
+*
+* @param	signalArg - Callback function arguments
+*/
 static void hideInfoBanner(union sigval signalArg);
+
+/**
+* @brief	Initialize and create all graphic timers	
+*/
 static int32_t timerInit();
+
+/**
+* @brief	Deinitialize and remove all graphic timers	
+*/
 static int32_t timerDeinit();
+
+/**
+* @brief	Initialize DFB
+*
+* @return	0 - for no error
+*			-1 - for error		
+*/
+static int32_t dfbInit();
+
+/**
+* @brief	Deinitialize DFB components
+*
+* @return	0 - for no error
+* @return	-1 - for error	
+*/
+static int32_t dfbDeinit()
 
 GraphicControllerError graphicConntrollerInit()
 {

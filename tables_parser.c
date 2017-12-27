@@ -1,3 +1,25 @@
+/****************************************************************************
+*
+* Univerzitet u Novom Sadu, Fakultet tehnickih nauka
+* Katedra za Računarsku Tehniku i Računarske Komunikacije
+*
+* -----------------------------------------------------
+* Ispitni zadatak iz predmeta:
+* PROGRAMSKA PODRSKA U TELEVIZIJI I OBRADI SLIKE
+* -----------------------------------------------------
+* TV Application
+* -----------------------------------------------------
+*
+* \file table_parser.c
+* \brief
+*  Module for parsing PAT, PMT and EIT tables
+* Created on Dec 2017.
+*
+* @Author Nebojsa Rablov
+* \notes
+*
+*****************************************************************************/
+
 #include "tables.h"
 
 ParseErrorCode parsePatHeader(const uint8_t* patHeaderBuffer, PatHeader* patHeader)

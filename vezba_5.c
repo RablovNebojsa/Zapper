@@ -1,3 +1,26 @@
+/****************************************************************************
+*
+* Univerzitet u Novom Sadu, Fakultet tehnickih nauka
+* Katedra za Računarsku Tehniku i Računarske Komunikacije
+*
+* -----------------------------------------------------
+* Ispitni zadatak iz predmeta:
+* PROGRAMSKA PODRSKA U TELEVIZIJI I OBRADI SLIKE
+* -----------------------------------------------------
+* TV Application
+* -----------------------------------------------------
+*
+* \file vezba_5.c
+* \brief
+* Main application module. Runs initialization and deinitialization of others 
+* moduls, shows graphic elements and enables interaction with users.
+* Created on Dec 2017.
+*
+* @Author Nebojsa Rablov
+* \notes
+*
+*****************************************************************************/
+
 #include "remote_controller.h"
 #include "stream_controller.h"
 #include "config_parser.h"
@@ -7,12 +30,12 @@ static inline void textColor(int32_t attr, int32_t fg, int32_t bg)
 {
    char command[13];
 
-   /* command is the control command to the terminal */
+   /** command is the control command to the terminal */
    sprintf(command, "%c[%d;%d;%dm", 0x1B, attr, fg + 30, bg + 40);
    printf("%s", command);
 }
 
-/* macro function for error checking */
+/** @brief macro function for error checking */
 #define ERRORCHECK(x)                                                       \
 {                                                                           \
 if (x != 0)                                                                 \
@@ -24,56 +47,92 @@ if (x != 0)                                                                 \
  }                                                                          \
 }
 
-#define MUTE 0
-#define MIN_VOLUME 0
-#define MAX_VOLUME 10
-#define DEFAULT_VOLUME 3
+/** @brief Value to set when sound is muted */
+#define MUTE 			0	
+/** @brief Minimum volume threshold */
+#define MIN_VOLUME 		0
+/** @brief Maximum volume thrashold */
+#define MAX_VOLUME 		10
+/** @brief Defauld volume value, set on application start and after unmute */
+#define DEFAULT_VOLUME 	3
+/** @brief value that multiplies the volume that goes to the player */
 #define VOLUME_INCEMENT 200000000
 
+/** @brief a string containing the text of the start time to display on info banner */
 static char infoBannerStart[30];
+/** @brief a string containing the text of the event name to display on info banner */
 static char infoBannerName[50];
+/** @brief a string containing the text of video and audio PIDs to display on info banner */
 static char infoBannerPid[50];
+/** @brief a string containing the text of the current channel number to display on info banner */
 static char infoBannerChannel[30];
-static uint32_t playerVolume = 0;
+/** @brief Flag that indicate if sound is muted */
 static bool isMuted = false;
+/** @brief Current volume value */
 static int32_t volume = DEFAULT_VOLUME;
+/** @brief Buffer that contain multi digit chanel number on whitchto change */
 static uint32_t programNumberBuffer;
+/** @brief Counts presses form remoter */
 static int16_t counter = 1;
+/** @brief ID of timer that count time between two key press on remoter */
 static timer_t keyPressTimer;
+/** @brief Structure that contains initial parameters form config.txt */
 static Config configData;
 	
 static pthread_cond_t deinitCond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t deinitMutex = PTHREAD_MUTEX_INITIALIZER;
 static ChannelInfo channelInfo;
 
+/**
+ * @brief	Callback function called when key is pressed
+ *
+ * @param	[in] code - code value of pressed key
+ * @param	[in] type - type value of pressed key
+ * @param	[in] value - value of pressed key
+ */
 static void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value);
+
+/**
+ * @brief	Initialize timer that counts time betweene two key presses
+ *
+ * @return	0 - For no error
+ *			-1 - For error
+ */
 static int32_t initTimer();
+
+/**
+ * @brief	Function allows you to enter numbers with multiple digits. Called when key is pressed
+ *
+ * @param	[in] keyPressed - digit value from remote controller
+ *
+ * @return	0 - For ne error
+ *			-1 - For error
+ */
 static int32_t numKeyPressed(uint32_t keyPressed);
+
+/**
+ * @brief	Function to be called when time is up, using number from remoter to change channel
+ */
 static void timeOut(union sigval signalArg);
 
+ /* Initalize all modules and starts application.
+	Deinitialize all modules ofter Exit key is pressed */
 int main(int argc, char *argv[])
 {
 	/* Reading initial data from config file */
 	ERRORCHECK(parseConfigFile((char*)argv[1], &configData));	
-
 	/* initialize graphic controller module */
 	ERRORCHECK(graphicConntrollerInit());
-
 	/* Initialize keyPressTimer */
 	ERRORCHECK(initTimer());
-
 	/* initialize remote controller module */
 	ERRORCHECK(remoteControllerInit(configData));
-
 	/* register remote controller callback */
 	ERRORCHECK(registerRemoteControllerCallback(remoteControllerCallback));
-
 	/* initialize stream controller module */
 	ERRORCHECK(streamControllerInit(configData));
-
 	/* Set default volume on start */
 	setPlayerVolume(DEFAULT_VOLUME * VOLUME_INCEMENT);
-
 	/* wait for a EXIT remote controller key press event */
 	pthread_mutex_lock(&deinitMutex);
 	if (ETIMEDOUT == pthread_cond_wait(&deinitCond, &deinitMutex))
@@ -81,18 +140,12 @@ int main(int argc, char *argv[])
 		printf("\n%s : ERROR Lock timeout exceeded!\n", __FUNCTION__);
 	}
 	pthread_mutex_unlock(&deinitMutex);
-
-	//ERRORCHECK(graphicConntrollerDeinit);
-
 	/* unregister remote controller callback */
 	ERRORCHECK(unregisterRemoteControllerCallback(remoteControllerCallback));
-
 	/* deinitialize remote controller module */
 	ERRORCHECK(remoteControllerDeinit());
-
 	/* deinitialize stream controller module */
 	ERRORCHECK(streamControllerDeinit());
-
 	/* deinitialize graphic controller module */
 	ERRORCHECK(graphicConntrollerDeinit);
 
@@ -154,7 +207,6 @@ void remoteControllerCallback(uint16_t code, uint16_t type, uint32_t value)
 				sprintf(infoBannerName,"Event name: %s", channelInfo.eventName + 1);
 				sprintf(infoBannerStart,"Start time: %x:%x:%x", channelInfo.startTime[2], channelInfo.startTime[3], channelInfo.startTime[4]);
 				showInfoBanner(infoBannerName, infoBannerStart, infoBannerPid, infoBannerChannel);
-
 		        printf("\n********************* Channel info *********************\n");
 		        printf("Program number: %d\n", channelInfo.programNumber);
 				printf("Service ID: %d\n", channelInfo.serviceId);
@@ -220,7 +272,6 @@ int32_t numKeyPressed(uint32_t keyPressed)
 	timer_settime(keyPressTimer,timerFlags,&timerSpec,&timerSpecOld);
 	if(counter == 3){
 		programNumberBuffer = (programNumberBuffer * 10) + keyPressed;
-printf("*** %d",programNumberBuffer);
 		if(channelChange(programNumberBuffer)){
 			printf("\n Channel %d unavailable!\n", programNumberBuffer);
 		}
@@ -243,7 +294,7 @@ printf("*** %d",programNumberBuffer);
 
 	if(timer_settime(keyPressTimer,timerFlags,&timerSpec,&timerSpecOld) == -1){
 		printf("\nError setting timer!\n");
-		return 1;
+		return -1;
 	}
 	return 0;
 }
@@ -264,7 +315,7 @@ int32_t initTimer(){
                        /*where to store the ID of the newly created timer*/&keyPressTimer);
 	if(ret != 0){
 		printf("\nTimer can not be created.\n");
-		return 1;
+		return -1;
 	}
 	printf("\n*** Timer initalized!\n");
 	return 0;

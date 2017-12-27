@@ -1,3 +1,26 @@
+/****************************************************************************
+*
+* Univerzitet u Novom Sadu, Fakultet tehnickih nauka
+* Katedra za Računarsku Tehniku i Računarske Komunikacije
+*
+* -----------------------------------------------------
+* Ispitni zadatak iz predmeta:
+* PROGRAMSKA PODRSKA U TELEVIZIJI I OBRADI SLIKE
+* -----------------------------------------------------
+* TV Application
+* -----------------------------------------------------
+*
+* \file stream_controller.c
+* \brief
+*  A module that parses PAT, PMT and EIT tables and controls video and audio streams
+* 
+* Created on Dec 2017.
+*
+* @Author Nebojsa Rablov
+* \notes
+*
+*****************************************************************************/
+
 #include "stream_controller.h"
 
 static PatTable *patTable;
@@ -31,7 +54,17 @@ static pthread_t scThread;
 static pthread_cond_t demuxCond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t demuxMutex = PTHREAD_MUTEX_INITIALIZER;
 
+/**
+ * @brief 	Task for stream controller thread
+ */
 static void* streamControllerTask();
+
+/**
+ * @brief 	Parses tables, starts video and audio stream and stores information about current channel
+ *
+ * @param	[in] channelNumber - number of channel to be started from PAT table
+ *
+ */
 static void startChannel(int32_t channelNumber);
 
 StreamControllerError streamControllerInit(const Config initData)

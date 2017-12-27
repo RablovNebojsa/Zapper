@@ -1,3 +1,26 @@
+/****************************************************************************
+*
+* Univerzitet u Novom Sadu, Fakultet tehnickih nauka
+* Katedra za Računarsku Tehniku i Računarske Komunikacije
+*
+* -----------------------------------------------------
+* Ispitni zadatak iz predmeta:
+* PROGRAMSKA PODRSKA U TELEVIZIJI I OBRADI SLIKE
+* -----------------------------------------------------
+* TV Application
+* -----------------------------------------------------
+*
+* \file stream_controller.h
+* \brief
+*  Header file contains type definitions and functio prototyps for stream controller
+* 
+* Created on Dec 2017.
+*
+* @Author Nebojsa Rablov
+* \notes
+*
+*****************************************************************************/
+
 #ifndef __STREAM_CONTROLLER_H__
 #define __STREAM_CONTROLLER_H__
 
@@ -14,10 +37,8 @@
 #include <signal.h>
 #include <string.h>
 
-#define DEFAULT_VOLUME 3
-
 /**
- * @brief Structure that defines stream controller error
+ * @brief 	Structure that defines stream controller error
  */
 typedef enum _StreamControllerError
 {
@@ -27,7 +48,7 @@ typedef enum _StreamControllerError
 }StreamControllerError;
 
 /**
- * @brief Structure that defines channel info
+ * @brief 	Structure that defines channel info used for graphic elements
  */
 typedef struct _ChannelInfo
 {
@@ -41,8 +62,8 @@ typedef struct _ChannelInfo
 }ChannelInfo;
 
 /**
-/* @brief Structure that defines starting parameters
-*/
+ * @brief 	Structure that defines starting parameters
+ */
 typedef struct _config {
 	uint32_t 	freq;
 	uint32_t 	bandwidth;
@@ -51,62 +72,66 @@ typedef struct _config {
 } Config;
 
 /**
- * @brief Initializes stream controller module
+ * @brief 	Initializes stream controller module
  *
- * @return stream controller error code
+ * @return 	stream controller error code
  */
 StreamControllerError streamControllerInit(const Config initData);
 
 /**
- * @brief Deinitializes stream controller module
+ * @brief 	Deinitializes stream controller module
  *
- * @return stream controller error code
+ * @return	stream controller error code
  */
 StreamControllerError streamControllerDeinit();
 
 /**
- * @brief Set actual volume
+ * @brief 	Set actual volume on player
  *
- * @param [in]  volume - value for volume 
- * @return stream controller error code
+ * @param 	[in] volume - value for volume
+ *
+ * @return 	stream controller error code
  */
 StreamControllerError setPlayerVolume(const uint32_t volume);
 
 /**
- * @brief Get actual volume 
+ * @brief 	Get volume from player
  *
- * @param [out]  volume - locatin to save volume value
- * @return stream controller error code
+ * @param 	[out] volume - locatin to save volume value
+ *
+ * @return 	stream controller error code
  */
 StreamControllerError getPlayerVolume(uint32_t *volume);
 
 /**
- * @brief Channel up
+ * @brief 	Channel up, when channel up button is pressed on remote controller
  *
- * @return stream controller error
+ * @return 	stream controller error
  */
 StreamControllerError channelUp();
 
 /**
- * @brief Channel down
+ * @brief 	Channel down, when channel down button is pressed on remote controller
  *
- * @return stream controller error
+ * @return 	stream controller error
  */
 StreamControllerError channelDown();
 
 /**
- * @brief Registers numeric key press
+ * @brief 	Change on channel given by user over remote controller
  *
- * @param [in]  program - program number from remote controller (change to program - 1)
- * @return stream controller error code
+ * @param 	[in] program - program number from remote controller (change to program - 1)
+ *
+ * @return 	stream controller error code
  */
 StreamControllerError channelChange(uint32_t program);
 
 /**
- * @brief Returns current channel info
+ * @brief 	Returns current channel info
  *
- * @param [out] channelInfo - channel info structure with current channel info
- * @return stream controller error code
+ * @param 	[out] channelInfo - channel info structure with current channel information
+ *
+ * @return 	stream controller error code
  */
 StreamControllerError getChannelInfo(ChannelInfo* channelInfo);
 
